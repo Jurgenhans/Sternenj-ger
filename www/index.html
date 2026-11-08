@@ -390,7 +390,8 @@ function bhPos(){
   return{x:s.x+dx/d*700,y:s.y+dy/d*700};
 }
 function makeBH(e){
-  BH=bhPos();BHcd=5;
+  /* Schwarzes Loch entsteht direkt neben dem Endgegner; 15 s Ruhe zum Einsammeln der Beute */
+  const a=rnd(0,TAU);BH={x:clamp(e.x+Math.cos(a)*400,600,W-600),y:clamp(e.y+Math.sin(a)*400,600,H-600)};BHcd=15;
   toast('Ein Schwarzes Loch öffnet sich! Fliege hinein, um in den Abgrund zu gelangen','#c06bff');ring(BH.x,BH.y,500,'#c06bff');ring(BH.x,BH.y,300,'#ffffff');
 }
 function enterAbyss(){
@@ -609,12 +610,12 @@ function updWorld(dt){
   for(let i=TX.length-1;i>=0;i--){const t=TX[i];t.life-=dt;t.y-=30*dt;if(t.life<=0)TX.splice(i,1)}
 }
 /* ---------- Speichern ---------- */
-function save(){try{localStorage.setItem(SAVE,JSON.stringify({cls:P.cls,slots:P.slots,cargo:P.cargo,storage:P.storage,credits:P.credits,owned:P.owned,home:P.home,score,kills,uid,bcd:BOSS.cd}))}catch(e){}}
+function save(){try{localStorage.setItem(SAVE,JSON.stringify({cls:P.cls,slots:P.slots,cargo:P.cargo,storage:P.storage,credits:P.credits,owned:P.owned,home:P.home,score,kills,uid,bcd:BOSS.cd,bh:BH?{x:BH.x,y:BH.y}:null}))}catch(e){}}
 function loadSave(){
   try{const d=JSON.parse(localStorage.getItem(SAVE)||'null');if(!d||!SHIPS[d.cls])return false;
     newGame();Object.assign(P,{cls:d.cls,slots:d.slots,cargo:d.cargo,storage:d.storage,credits:d.credits,owned:d.owned,home:d.home});
     while(P.slots.length<SHIPS[P.cls].slots)P.slots.push(null);
-    while(P.owned.length<SHIPS.length)P.owned.push(false);BOSS.cd=d.bcd||0;if(BOSS.cd>0)BH=bhPos();score=d.score||0;kills=d.kills||0;uid=d.uid||1000;const s=SYS[P.home];P.x=s.sx+160;P.y=s.sy+160;fullRepair();return true}
+    while(P.owned.length<SHIPS.length)P.owned.push(false);BOSS.cd=d.bcd||0;if(BOSS.cd>0)BH=d.bh&&isFinite(d.bh.x)&&isFinite(d.bh.y)?{x:d.bh.x,y:d.bh.y}:bhPos();score=d.score||0;kills=d.kills||0;uid=d.uid||1000;const s=SYS[P.home];P.x=s.sx+160;P.y=s.sy+160;fullRepair();return true}
   catch(e){return false}
 }
 function hasSave(){try{return !!localStorage.getItem(SAVE)}catch(e){return false}}
