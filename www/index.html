@@ -238,7 +238,9 @@ const SHIPS=[
   {k:'Fregatte',slots:5,shield:120,hull:150,energy:100,spd:270,sreg:5,ereg:14,cargo:20,rad:14,price:0},
   {k:'Kreuzer',slots:8,shield:320,hull:420,energy:180,spd:225,sreg:8,ereg:18,cargo:40,rad:21,price:5000},
   {k:'Schlachtschiff',slots:12,shield:750,hull:1100,energy:320,spd:180,sreg:14,ereg:26,cargo:80,rad:31,price:18000},
-  {k:'Dreadnought',slots:16,shield:2000,hull:3200,energy:600,spd:150,sreg:24,ereg:44,cargo:150,rad:93,price:100000}
+  {k:'Dreadnought',slots:16,shield:2000,hull:3200,energy:600,spd:150,sreg:24,ereg:44,cargo:150,rad:93,price:100000},
+  /* Index 4 hinten angehängt, damit alte Spielstände gültig bleiben. Die Werft zeigt die Schiffe nach Preis sortiert. */
+  {k:'Raubvogel',slots:14,shield:1300,hull:1900,energy:450,spd:190,sreg:18,ereg:34,cargo:110,rad:48,price:75000}
 ];
 const MT={
   laser:{n:'LASER',c:'w',ic:'L',dmg:10,cd:.35,en:4,rng:380,spd:760,col:'#ff8a3d',price:150},
@@ -320,7 +322,7 @@ function fullRepair(){stats();P.shield=P.st.sh;P.hull=P.st.hu;P.energy=P.st.en}
 function cap(){return SHIPS[P.cls].cargo}
 function newGame(){
   uid=1;
-  P={x:SYS[0].sx+160,y:SYS[0].sy+160,vx:0,vy:0,ang:-Math.PI/2,cls:0,credits:200,owned:[true,false,false,false],home:0,
+  P={x:SYS[0].sx+160,y:SYS[0].sy+160,vx:0,vy:0,ang:-Math.PI/2,cls:0,credits:200,owned:[true,false,false,false,false],home:0,
      slots:[mk('laser'),mk('laser'),mk('shield'),mk('reactor'),null],cargo:[],storage:[mk('armor'),mk('regen')],
      wt:{},hitT:0,flash:0,cloak:0,cloakCd:0,dead:false,docked:-1,shield:1e5,hull:1e5,energy:1e5,st:null,fire:true,full:0};
   fullRepair(); score=0;kills=0; BOSS={cd:0,e:null}; WORLD='main';BH=null;BHcd=0;AB=null;MS=null;alWarned=false;P.grab=null;document.body.classList.remove('aby'); resetWorld();
@@ -707,9 +709,34 @@ const PAL_X={a:'#7a2f9c',b:'#2d0f45',c:'#ffd04a',g:'#ff4d4d',f:'255,208,74'};
 const tagOf=s=>s.al?'ALIENS · TENTAKEL':s.fl>.4&&s.bo>.4?'FLAMMEN + BLITZE':s.fl>.4?'FLAMMEN':s.bo>.4?'BLITZE':'';
 const hexRgb=h=>parseInt(h.slice(1,3),16)+','+parseInt(h.slice(3,5),16)+','+parseInt(h.slice(5,7),16);
 function glow(x,y,r,rgb,a){const g=cx.createRadialGradient(x,y,r*.1,x,y,r);g.addColorStop(0,'rgba('+rgb+','+a+')');g.addColorStop(1,'rgba('+rgb+',0)');cx.fillStyle=g;cx.beginPath();cx.arc(x,y,r,0,TAU);cx.fill()}
+
+/* Raubvogel: gespreizte Flügel mit nach vorn weisenden Spitzen-Kanonen, langer Hals mit Kommandokapsel */
+const BOP=(()=>{const R=[[0,-1.55],[.2,-1.4],[.15,-.7],[.32,-.35],[.85,-.25],[1.4,-.5],[1.78,-1.0],[1.7,-.45],[1.58,.05],[1.32,.08],[1.36,.5],[1.08,.38],[1.1,.8],[.82,.66],[.8,1.08],[.55,.9],[.42,1.32],[.2,1.45]];
+  return R.concat(R.slice(1).reverse().map(q=>[-q[0],q[1]]))})();
+function drawBoP(s,pal,spd,flash,rad){
+  if(spd>20){const len=clamp(spd/200,.2,1.3)*rad*.9*(.8+.2*Math.sin(tmr*40));
+    cx.globalCompositeOperation='lighter';
+    for(const q of [[-.3,1.4,1],[.3,1.4,1],[-.92,1.02,.8],[.92,1.02,.8]]){const bx=q[0]*s,by=q[1]*s,w=rad*.15*q[2];cx.fillStyle='rgba('+pal.f+',.75)';cx.beginPath();cx.moveTo(bx-w,by);cx.lineTo(bx+w,by);cx.lineTo(bx,by+len*q[2]);cx.fill()}
+    cx.globalCompositeOperation='source-over'}
+  poly(BOP,s,pal.a,pal.c);
+  for(const sg of [1,-1]){
+    poly([[.4,-.1],[1.3,-.35],[1.5,0],[1.12,.3],[.62,.25]].map(q=>[q[0]*sg,q[1]]),s,pal.b);
+    cx.strokeStyle=pal.c;cx.lineWidth=1;cx.beginPath();
+    for(const q of [[.55,.12,1.38,-.08],[.65,.3,1.2,.2]]){cx.moveTo(q[0]*sg*s,q[1]*s);cx.lineTo(q[2]*sg*s,q[3]*s)}cx.stroke();
+    cx.strokeStyle=pal.c;cx.lineWidth=Math.max(2,s*.08);cx.beginPath();cx.moveTo(1.76*sg*s,-.95*s);cx.lineTo(1.8*sg*s,-1.32*s);cx.stroke();
+    cx.fillStyle=pal.g;cx.beginPath();cx.arc(1.74*sg*s,-.9*s,.09*s,0,TAU);cx.fill();
+    cx.fillStyle=pal.g;cx.globalAlpha=.8;cx.beginPath();cx.ellipse(.3*sg*s,1.32*s,.1*s,.06*s,0,0,TAU);cx.fill();cx.beginPath();cx.ellipse(.92*sg*s,.98*s,.12*s,.06*s,0,0,TAU);cx.fill();cx.globalAlpha=1}
+  cx.strokeStyle=pal.b;cx.lineWidth=Math.max(2,s*.12);cx.beginPath();cx.moveTo(0,-1.0*s);cx.lineTo(0,1.2*s);cx.stroke();
+  cx.fillStyle=pal.a;cx.strokeStyle=pal.c;cx.lineWidth=1.2;cx.beginPath();cx.ellipse(0,-1.42*s,.3*s,.36*s,0,0,TAU);cx.fill();cx.stroke();
+  cx.fillStyle=pal.b;cx.beginPath();cx.ellipse(0,-1.46*s,.17*s,.2*s,0,0,TAU);cx.fill();
+  cx.fillStyle=pal.g;cx.beginPath();cx.ellipse(0,-1.5*s,.08*s,.12*s,0,0,TAU);cx.fill();
+  cx.fillStyle=pal.g;cx.globalAlpha=.55+.25*Math.sin(tmr*3);cx.beginPath();cx.arc(0,.4*s,.16*s,0,TAU);cx.fill();cx.globalAlpha=1;
+  if(flash>0){cx.globalAlpha=flash*2;poly(BOP,s,'#fff')}
+}
 function drawShip(x,y,ang,rad,cls,pal,spd,alpha,shapes,flash){
   cx.save();cx.translate(x,y);cx.rotate(ang+1.5708);
   cx.globalAlpha=alpha;const s=rad/1.15;
+  if(cls===4){drawBoP(s,pal,spd,flash,rad);cx.restore();return}
   if(spd>20){const len=clamp(spd/200,.2,1.3)*rad*.9*(.8+.2*Math.sin(tmr*40));const offs=cls===3?[-.8,-.4,0,.4,.8]:cls===2?[-.55,0,.55]:cls===1?[-.3,.3]:[0];
     cx.globalCompositeOperation='lighter';
     for(const o of offs){const bx=o*s*1.1,by=s*(cls>=2?1.35:1.0);cx.fillStyle='rgba('+pal.f+',.75)';cx.beginPath();cx.moveTo(bx-rad*.18,by);cx.lineTo(bx+rad*.18,by);cx.lineTo(bx,by+len);cx.fill()}
@@ -1010,7 +1037,7 @@ function renderStation(){
     }
   }else{
     h+='<div class="sec"><span>WERFT · SCHIFFE</span></div>';
-    SHIPS.forEach((sh,i)=>{const act=P.cls===i,own=P.owned[i];
+    SHIPS.map((_,i)=>i).sort((a,b)=>SHIPS[a].price-SHIPS[b].price).forEach(i=>{const sh=SHIPS[i],act=P.cls===i,own=P.owned[i];
       h+='<div class="it"><div class="info"><div class="nm" style="color:'+(act?'var(--ok)':'var(--text)')+'">'+sh.k.toUpperCase()+(act?' · AKTIV':'')+'</div><div class="ds">'+sh.slots+' Module · Schild '+sh.shield+' · Struktur '+sh.hull+' · Energie '+sh.energy+' · Fracht '+sh.cargo+'</div></div>'+
         (own?'':'<span class="pr">'+fmt(sh.price)+' CR</span>')+'<button class="b sm" data-a="ship" data-i="'+i+'"'+(act||(!own&&P.credits<sh.price)?' disabled':'')+'>'+(act?'Aktiv':own?'Wechseln':'Kaufen')+'</button></div>'});
     h+='<div class="empty-note">Beim Wechsel wandern alle Module ins Stationslager. Mit „Automatisch“ im Reiter Ausrüsten rüstest du das neue Schiff schnell aus.</div>';
