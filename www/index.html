@@ -384,9 +384,13 @@ function bossAI(e,c,dt,dx,dy,d){
     for(let i=0;i<4;i++){const n0=E.length;if(e.aby)abyNpc(i%2?1:0,'gun',e.x,e.y,e.lv);else spawnE(BOSSI,i%2?1:0,true);if(E.length>n0){const ne=E[E.length-1];ne.x=e.x+rnd(-250,250);ne.y=e.y+rnd(-250,250);ne.aggro=6}}}
 }
 function banner(t){const b=$('banner');b.textContent=t;b.classList.remove('show');void b.offsetWidth;b.classList.add('show')}
+function bhPos(){
+  /* feste Position auf der der Station gegenüberliegenden Seite von Zenith (ca. 1200 Einheiten von der Station entfernt) */
+  const s=SYS[BOSSI],dx=s.x-s.sx,dy=s.y-s.sy,d=Math.hypot(dx,dy)||1;
+  return{x:s.x+dx/d*700,y:s.y+dy/d*700};
+}
 function makeBH(e){
-  const s=SYS[BOSSI],dx=e.x-s.x,dy=e.y-s.y,d=Math.hypot(dx,dy)||1;
-  BH={x:s.x-dx/d*700,y:s.y-dy/d*700};BHcd=5;
+  BH=bhPos();BHcd=5;
   toast('Ein Schwarzes Loch öffnet sich! Fliege hinein, um in den Abgrund zu gelangen','#c06bff');ring(BH.x,BH.y,500,'#c06bff');ring(BH.x,BH.y,300,'#ffffff');
 }
 function enterAbyss(){
@@ -594,7 +598,7 @@ function updL(dt){
   }
 }
 function updWorld(dt){
-  tmr+=dt;SH=Math.max(0,SH-dt*2.4);for(let i=RG.length-1;i>=0;i--){RG[i].life-=dt;if(RG[i].life<=0)RG.splice(i,1)}if(BOSS.cd>0){BOSS.cd-=dt;if(BOSS.cd<=0){BH=null;toast('Zenith: Der Wächter kehrt zurück. Räume das System, um ihn zu rufen','#ffd04a')}}updP(dt);
+  tmr+=dt;SH=Math.max(0,SH-dt*2.4);for(let i=RG.length-1;i>=0;i--){RG[i].life-=dt;if(RG[i].life<=0)RG.splice(i,1)}if(BOSS.cd>0){BOSS.cd-=dt;if(BOSS.cd<=0){BH=null;if(WORLD==='main')toast('Zenith: Der Wächter kehrt zurück. Räume das System, um ihn zu rufen','#ffd04a')}}updP(dt);
   for(const e of E){if(e.dead)continue;if((e.x-P.x)**2+(e.y-P.y)**2<3200*3200)updE(e,dt)}
   E=E.filter(e=>!e.dead);
   updB(dt);updL(dt);
@@ -610,7 +614,7 @@ function loadSave(){
   try{const d=JSON.parse(localStorage.getItem(SAVE)||'null');if(!d||!SHIPS[d.cls])return false;
     newGame();Object.assign(P,{cls:d.cls,slots:d.slots,cargo:d.cargo,storage:d.storage,credits:d.credits,owned:d.owned,home:d.home});
     while(P.slots.length<SHIPS[P.cls].slots)P.slots.push(null);
-    while(P.owned.length<SHIPS.length)P.owned.push(false);BOSS.cd=d.bcd||0;if(BOSS.cd>0)BH={x:SYS[BOSSI].x+500,y:SYS[BOSSI].y-300};score=d.score||0;kills=d.kills||0;uid=d.uid||1000;const s=SYS[P.home];P.x=s.sx+160;P.y=s.sy+160;fullRepair();return true}
+    while(P.owned.length<SHIPS.length)P.owned.push(false);BOSS.cd=d.bcd||0;if(BOSS.cd>0)BH=bhPos();score=d.score||0;kills=d.kills||0;uid=d.uid||1000;const s=SYS[P.home];P.x=s.sx+160;P.y=s.sy+160;fullRepair();return true}
   catch(e){return false}
 }
 function hasSave(){try{return !!localStorage.getItem(SAVE)}catch(e){return false}}
