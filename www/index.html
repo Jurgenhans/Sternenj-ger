@@ -296,10 +296,10 @@ function describe(it){
   if(m.c==='w')return `Schaden ${Math.round(m.dmg*k)} · ${(1/m.cd).toFixed(1).replace('.',',')}/s · ${Math.round(wEn(it))} Energie`;
   if(m.c==='d')return `Autoschuss ${Math.round(m.dmg*k)} · kostet keine Energie`;
   switch(it.t){
-    case 'damper':return '-'+m.pct[it.tier-1]+' % Schaden auf Schild und Struktur';
+    case 'damper':return '-'+m.pct[it.tier-1]+' % Schaden auf Schild und Struktur · addiert sich bis max. 90 %';
     case 'shield':return `+${Math.round(m.val*k)} Schild`;
     case 'armor':return `+${Math.round(m.val*k)} Struktur`;
-    case 'regen':return `+${(m.val*k).toFixed(1).replace('.',',')} Schild pro Sekunde, im Kampf die Hälfte`;
+    case 'regen':return `+${(m.val*k).toFixed(1).replace('.',',')} Schild pro Sekunde, im Kampf die Hälfte · bis zu 10 Module addieren sich`;
     case 'reactor':return `+${Math.round(m.val*k)} Energie, +${(m.er*k).toFixed(1).replace('.',',')}/s`;
     case 'engine':return `+${Math.round(m.val*TS[it.tier-1]+(it.up||0))} % Tempo`;
     case 'cloak':return `${Math.round(m.dur+k*1.5)} s Tarnung, ${m.cdn} s Pause`;
@@ -328,14 +328,16 @@ let zUp=false,zDn=false,zHint=-1;const keys={},joy={x:0,y:0,on:false,id:-1,ox:0,
 
 function stats(){
   const s=SHIPS[P.cls]; const st={sh:s.shield,hu:s.hull,en:s.energy,sp:s.spd,sr:s.sreg,er:s.ereg,W:[],D:[],cloak:null,red:0,rg:0};
+  const rgl=[];
   for(const it of P.slots){ if(!it)continue; const m=MT[it.t],k=TS[it.tier-1];
     if(m.c==='w')st.W.push(it); else if(m.c==='d')st.D.push(it);
     else if(it.t==='shield')st.sh+=m.val*k; else if(it.t==='armor')st.hu+=m.val*k;
     else if(it.t==='reactor'){st.en+=m.val*k;st.er+=m.er*k}
-    else if(it.t==='regen')st.rg+=m.val*k; else if(it.t==='engine')st.sp*=1+(m.val*k+(it.up||0))/100;
+    else if(it.t==='regen')rgl.push(m.val*k); else if(it.t==='engine')st.sp*=1+(m.val*k+(it.up||0))/100;
     else if(it.t==='cloak')st.cloak=it;
-    else if(it.t==='damper')st.red=Math.min(60,st.red+m.pct[it.tier-1]);
+    else if(it.t==='damper')st.red=Math.min(90,st.red+m.pct[it.tier-1]);
   }
+  rgl.sort((a,b)=>b-a);st.rg=rgl.slice(0,10).reduce((a,b)=>a+b,0);
   P.st=st; P.shield=Math.min(P.shield,st.sh); P.hull=Math.min(P.hull,st.hu); P.energy=Math.min(P.energy,st.en);
 }
 function fullRepair(){stats();P.shield=P.st.sh;P.hull=P.st.hu;P.energy=P.st.en}
@@ -1373,11 +1375,12 @@ function renderStation(){
 }
 function autoFit(){
   const pool=P.cargo.concat(P.storage).sort((a,b)=>ORDER.indexOf(a.t)-ORDER.indexOf(b.t)||b.tier-a.tier);
+  const lim=t=>t==='regen'||t==='damper'?10:2;let ds=P.slots.reduce((a,i)=>a+(i&&i.t==='damper'?MT.damper.pct[i.tier-1]:0),0);
   const wmax=Math.max(2,Math.round(P.slots.length*.45)),cnt={};let wc=P.slots.filter(i=>i&&MT[i.t].c==='w').length;
   P.slots.forEach(i=>{if(i&&MT[i.t].c!=='w')cnt[i.t]=(cnt[i.t]||0)+1});
   for(const it of pool){const k=P.slots.indexOf(null);if(k<0)break;const w=MT[it.t].c==='w';
-    if(w&&wc>=wmax)continue;if(!w&&(cnt[it.t]||0)>=2)continue;
-    take(it.id);P.slots[k]=it;if(w)wc++;else cnt[it.t]=(cnt[it.t]||0)+1}
+    if(w&&wc>=wmax)continue;if(!w&&(cnt[it.t]||0)>=lim(it.t))continue;if(it.t==='damper'&&ds>=90)continue;
+    take(it.id);P.slots[k]=it;if(it.t==='damper')ds+=MT.damper.pct[it.tier-1];if(w)wc++;else cnt[it.t]=(cnt[it.t]||0)+1}
   stats();
 }
 function stAction(a,d){
