@@ -6,6 +6,8 @@ Das Spiel ist in 3D: Es nutzt einen eigenen WebGL-Renderer in derselben Datei, e
 
 Die Kamera ist eine Verfolgerkamera: Sie sitzt schräg hinter dem Schiff und dreht sich mit ihm, die Nase zeigt immer nach oben im Bild. Gesteuert wird aus Sicht des Schiffs: Joystick links/rechts dreht das Schiff, nach oben gibt Schub, nach unten bremst und fliegt rückwärts (Tastatur: A/D drehen, W/S Schub). Das Radar dreht mit.
 
+Die Kamera lässt sich zoomen: Tasten + und − am linken Bildschirmrand (gedrückt halten), Mausrad oder Tastatur + / − (0 setzt zurück). Die Zoomstufe wird gespeichert.
+
 Das Spielfeld hat außerdem eine Höhe (Z-Achse, ±60 Einheiten auf der Anzeige): Mit den Tasten ▲ HOCH und ▼ RUNTER am rechten Bildschirmrand (Tastatur: Leertaste / Umschalt) fliegst du nach oben und unten. Gegner, Geschosse und Beute haben ebenfalls eine Höhe, Stationen und Sonnen liegen auf Höhe 0. Dünne Linien zeigen, wie hoch ein Objekt über oder unter der Spielebene schwebt.
 
 ## Weg A: Ohne Android Studio, direkt bei GitHub (auch vom Handy)
