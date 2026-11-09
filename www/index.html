@@ -296,7 +296,7 @@ function describe(it){
   if(m.c==='w')return `Schaden ${Math.round(m.dmg*k)} · ${(1/m.cd).toFixed(1).replace('.',',')}/s · ${Math.round(wEn(it))} Energie`;
   if(m.c==='d')return `Autoschuss ${Math.round(m.dmg*k)} · kostet keine Energie`;
   switch(it.t){
-    case 'damper':return '-'+m.pct[it.tier-1]+' % Schaden auf Schild und Struktur · addiert sich bis max. 90 %';
+    case 'damper':return '-'+m.pct[it.tier-1]+' % Schaden auf Schild und Struktur · max. 3 Module, zusammen höchstens 90 %';
     case 'shield':return `+${Math.round(m.val*k)} Schild`;
     case 'armor':return `+${Math.round(m.val*k)} Struktur`;
     case 'regen':return `+${(m.val*k).toFixed(1).replace('.',',')} Schild pro Sekunde, im Kampf die Hälfte · bis zu 10 Module addieren sich`;
@@ -326,6 +326,10 @@ function bossTag(){return BOSS.e&&!BOSS.e.dead?' · BOSS!':BOSS.cd>0?' · Boss i
 let mode='title',score=0,kills=0,tmr=0,nearSys=-1,fullTimer=0;
 let zUp=false,zDn=false,zHint=-1;const keys={},joy={x:0,y:0,on:false,id:-1,ox:0,oy:0};
 
+/* Limit pro Modultyp (egal welche Stufe): Waffen 5, Schild-Regen 10, Dämpfer 3, alles andere 2 */
+const LIM=t=>MT[t].c==='w'?5:t==='regen'?10:t==='damper'?3:2;
+const cntT=t=>P.slots.filter(x=>x&&x.t===t).length;
+function enforceLimits(){const c={};P.slots.forEach((it,i)=>{if(!it)return;c[it.t]=(c[it.t]||0)+1;if(c[it.t]>LIM(it.t)){P.storage.push(it);P.slots[i]=null}})}
 function stats(){
   const s=SHIPS[P.cls]; const st={sh:s.shield,hu:s.hull,en:s.energy,sp:s.spd,sr:s.sreg,er:s.ereg,W:[],D:[],cloak:null,red:0,rg:0};
   const rgl=[];
@@ -729,7 +733,7 @@ function save(){try{localStorage.setItem(SAVE,JSON.stringify({cls:P.cls,slots:P.
 function loadSave(){
   try{const d=JSON.parse(localStorage.getItem(SAVE)||'null');if(!d||!SHIPS[d.cls])return false;
     newGame();Object.assign(P,{cls:d.cls,slots:d.slots,cargo:d.cargo,storage:d.storage,credits:d.credits,owned:d.owned,home:d.home});
-    while(P.slots.length<SHIPS[P.cls].slots)P.slots.push(null);
+    while(P.slots.length<SHIPS[P.cls].slots)P.slots.push(null);enforceLimits();
     while(P.owned.length<SHIPS.length)P.owned.push(false);BOSS.cd=d.bcd||0;if(BOSS.cd>0)BH=d.bh&&isFinite(d.bh.x)&&isFinite(d.bh.y)?{x:d.bh.x,y:d.bh.y}:bhPos();score=d.score||0;kills=d.kills||0;uid=d.uid||1000;const s=SYS[P.home];P.x=s.sx+160;P.y=s.sy+160;fullRepair();return true}
   catch(e){return false}
 }
@@ -1375,17 +1379,16 @@ function renderStation(){
 }
 function autoFit(){
   const pool=P.cargo.concat(P.storage).sort((a,b)=>ORDER.indexOf(a.t)-ORDER.indexOf(b.t)||b.tier-a.tier);
-  const lim=t=>t==='regen'||t==='damper'?10:2;let ds=P.slots.reduce((a,i)=>a+(i&&i.t==='damper'?MT.damper.pct[i.tier-1]:0),0);
-  const wmax=Math.max(2,Math.round(P.slots.length*.45)),cnt={};let wc=P.slots.filter(i=>i&&MT[i.t].c==='w').length;
-  P.slots.forEach(i=>{if(i&&MT[i.t].c!=='w')cnt[i.t]=(cnt[i.t]||0)+1});
-  for(const it of pool){const k=P.slots.indexOf(null);if(k<0)break;const w=MT[it.t].c==='w';
-    if(w&&wc>=wmax)continue;if(!w&&(cnt[it.t]||0)>=lim(it.t))continue;if(it.t==='damper'&&ds>=90)continue;
-    take(it.id);P.slots[k]=it;if(it.t==='damper')ds+=MT.damper.pct[it.tier-1];if(w)wc++;else cnt[it.t]=(cnt[it.t]||0)+1}
+  let ds=P.slots.reduce((a,i)=>a+(i&&i.t==='damper'?MT.damper.pct[i.tier-1]:0),0);
+  const cnt={};P.slots.forEach(i=>{if(i)cnt[i.t]=(cnt[i.t]||0)+1});
+  for(const it of pool){const k=P.slots.indexOf(null);if(k<0)break;
+    if((cnt[it.t]||0)>=LIM(it.t))continue;if(it.t==='damper'&&ds>=90)continue;
+    take(it.id);P.slots[k]=it;if(it.t==='damper')ds+=MT.damper.pct[it.tier-1];cnt[it.t]=(cnt[it.t]||0)+1}
   stats();
 }
 function stAction(a,d){
   switch(a){
-    case 'fit':{const k=P.slots.indexOf(null);if(k<0)return toast('Kein freier Slot','#ff4d4d');const it=take(+d.id);if(it){P.slots[k]=it;stats()}break}
+    case 'fit':{const k=P.slots.indexOf(null);if(k<0)return toast('Kein freier Slot','#ff4d4d');const c0=findIt(+d.id);if(c0&&cntT(c0.t)>=LIM(c0.t))return toast('Limit erreicht: höchstens '+LIM(c0.t)+' × '+MT[c0.t].n+' gleichzeitig','#ff4d4d');const it=take(+d.id);if(it){P.slots[k]=it;stats()}break}
     case 'unfit':{const k=P.slots.findIndex(x=>x&&x.id===+d.id);if(k>=0){stash(P.slots[k]);P.slots[k]=null;stats()}break}
     case 'tostore':{const it=take(+d.id);if(it)P.storage.push(it);break}
     case 'tocargo':{if(P.cargo.length>=cap())return;const it=take(+d.id);if(it)P.cargo.push(it);break}
