@@ -1340,6 +1340,8 @@ function itRow(it,act,label,pr,dis,extra){
   return '<div class="it"><div class="badge" style="color:'+catCol(it.t)+';border-color:'+c+';background:'+catCol(it.t)+'2a">'+MT[it.t].ic+'</div><div class="info"><div class="nm" style="color:'+c+'">'+nameOf(it)+(extra?' <span style="color:var(--dim);font-size:11px">'+extra+'</span>':'')+'</div><div class="ds">'+describe(it)+'</div></div>'+
     (pr?'<span class="pr">'+fmt(pr)+' CR</span>':'')+'<div class="acts"><button class="b sm" data-a="'+act+'" data-id="'+it.id+'" data-t="'+it.t+'" data-tier="'+it.tier+'"'+(dis?' disabled':'')+'>'+label+'</button>'+upBtns(it,act)+'</div></div>';
 }
+/* Inventar immer sortiert: Stufe IV oben, dann III, II, I; innerhalb einer Stufe nach Modultyp */
+const invCmp=(a,b)=>b.tier-a.tier||ORDER.indexOf(a.t)-ORDER.indexOf(b.t)||(b.up||0)-(a.up||0)||a.id-b.id;
 function renderStation(){
   const body=$('stbody'),sc=body.scrollTop,s=SYS[P.docked];let h='';
   $('stcred').textContent=fmt(P.credits)+' CR';
@@ -1347,22 +1349,22 @@ function renderStation(){
   const free=P.slots.filter(x=>!x).length;
   if(tab==='fit'){
     h+='<div class="sec"><span>'+SHIPS[P.cls].k.toUpperCase()+' · MODULE '+(P.slots.length-free)+'/'+P.slots.length+'</span><button class="b sm" data-a="auto">Automatisch</button></div>';
-    P.slots.forEach(it=>{h+=it?itRow(it,'unfit','Ausbauen'):'<div class="it"><div class="badge" style="border-style:dashed;color:#27455c;border-color:#27455c">+</div><div class="info"><div class="ds">Slot frei</div></div></div>'});
+    P.slots.filter(Boolean).sort(invCmp).concat(P.slots.filter(x=>!x)).forEach(it=>{h+=it?itRow(it,'unfit','Ausbauen'):'<div class="it"><div class="badge" style="border-style:dashed;color:#27455c;border-color:#27455c">+</div><div class="info"><div class="ds">Slot frei</div></div></div>'});
     h+='<div class="empty-note">Module der Stufe IV lassen sich hier aufwerten: Waffen je 1.000 CR +1 % Schaden (höchstens +100 %), Triebwerke je 1.000 CR +2 % Tempo (höchstens +300 %).</div>';
     h+='<div class="sec"><span>EINBAUBAR</span></div>';
-    const av=P.cargo.map(i=>[i,'Fracht']).concat(P.storage.map(i=>[i,'Lager']));
+    const av=P.cargo.map(i=>[i,'Fracht']).concat(P.storage.map(i=>[i,'Lager'])).sort((a,b)=>invCmp(a[0],b[0]));
     h+=av.length?av.map(([it,w])=>itRow(it,'fit','Einbauen',0,!free,w)).join(''):'<div class="empty-note">Keine Module in Fracht oder Lager.</div>';
   }else if(tab==='store'){
     h+='<div class="sec"><span>FRACHTRAUM '+P.cargo.length+'/'+cap()+'</span><button class="b sm" data-a="storeall"'+(P.cargo.length?'':' disabled')+'>Alles einlagern</button></div>';
-    h+=P.cargo.length?P.cargo.map(it=>itRow(it,'tostore','Einlagern')).join(''):'<div class="empty-note">Der Frachtraum ist leer. Beute wird im Flug automatisch eingesammelt.</div>';
+    h+=P.cargo.length?P.cargo.slice().sort(invCmp).map(it=>itRow(it,'tostore','Einlagern')).join(''):'<div class="empty-note">Der Frachtraum ist leer. Beute wird im Flug automatisch eingesammelt.</div>';
     h+='<div class="sec"><span>STATIONSLAGER '+P.storage.length+'</span></div>';
-    h+=P.storage.length?P.storage.map(it=>itRow(it,'tocargo','An Bord',0,P.cargo.length>=cap())).join(''):'<div class="empty-note">Im Lager liegt nichts.</div>';
+    h+=P.storage.length?P.storage.slice().sort(invCmp).map(it=>itRow(it,'tocargo','An Bord',0,P.cargo.length>=cap())).join(''):'<div class="empty-note">Im Lager liegt nichts.</div>';
   }else if(tab==='trade'){
     h+='<div class="btnrow" style="padding:6px 0"><button class="b sm'+(tmode==='sell'?' pri':'')+'" data-a="tm" data-m="sell">Verkaufen</button><button class="b sm'+(tmode==='buy'?' pri':'')+'" data-a="tm" data-m="buy">Kaufen</button></div>';
     if(tmode==='sell'){
       const cv=P.cargo.reduce((p,i)=>p+Math.floor(price(i)/2),0);
       h+='<div class="btnrow" style="padding-bottom:6px"><button class="b sm" data-a="sellcargo"'+(P.cargo.length?'':' disabled')+'>Fracht verkaufen (+'+fmt(cv)+')</button><button class="b sm" data-a="sellcommon">Alle MK-I verkaufen</button></div>';
-      const av=P.cargo.map(i=>[i,'Fracht']).concat(P.storage.map(i=>[i,'Lager']));
+      const av=P.cargo.map(i=>[i,'Fracht']).concat(P.storage.map(i=>[i,'Lager'])).sort((a,b)=>invCmp(a[0],b[0]));
       h+=av.length?av.map(([it,w])=>itRow(it,'sell','Verkaufen',Math.floor(price(it)/2),0,w)).join(''):'<div class="empty-note">Nichts zu verkaufen.</div>';
     }else{
       const mt=Math.min(4,s.lv);h+='<div class="empty-note">Angebot von Station '+s.name+': Module bis MK-'+ROM[mt-1]+'. Neues Material landet in der Fracht, sonst im Lager.</div>';
