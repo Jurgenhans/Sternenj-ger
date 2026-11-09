@@ -758,7 +758,7 @@ cv.addEventListener('webglcontextlost',e=>e.preventDefault());cv.addEventListene
 const ZMIN=.6,ZMAX=1.8,ZKEY='sternenjaeger_zoom';let zIn=false,zOut=false,zTm=0,ZU=1,ZUt=1,Zb=1;
 try{const v=parseFloat(localStorage.getItem(ZKEY));if(v>=ZMIN&&v<=ZMAX)ZU=ZUt=v}catch(e){}
 function zoomTo(v){ZUt=clamp(v,ZMIN,ZMAX);clearTimeout(zTm);zTm=setTimeout(()=>{try{localStorage.setItem(ZKEY,ZUt.toFixed(3))}catch(e){}},500)}
-let cw=0,ch=0,dpr=1,Z=1,fdt=.016;const cam={x:0,y:0,z:0,a:-Math.PI/2};let camCA=0,camSA=-1;
+let cw=0,ch=0,dpr=1,Z=1,fdt=.016;const cam={x:0,y:0,z:0,a:-Math.PI/2};let camCA=0,camSA=-1;const CAMUP=533,CAMBK=660;/* Kameraabstand: Neigung ca. 39° (vorher 56°), gleicher Abstand zum Schiff */
 function resize(){dpr=Math.min(2,window.devicePixelRatio||1);cw=cv.clientWidth;ch=cv.clientHeight;for(const c of [cv,ov]){c.width=Math.round(cw*dpr);c.height=Math.round(ch*dpr)}Zb=clamp(Math.min(cw,ch)/760,.55,1.2);Z=Zb*ZU}
 
 /* --- Matrizen (spaltenweise) --- */
@@ -1015,10 +1015,10 @@ const W3=[1,1,1],LDEF=(()=>{const l=[-.35,.85,.4],n=Math.hypot(l[0],l[1],l[2]);r
 const HC={};const hc=s=>HC[s]||(HC[s]=s.length===4?hf('#'+s[1]+s[1]+s[2]+s[2]+s[3]+s[3]):hf(s));
 function setCam(){
   const k=1/Z,sx=SH>0?rnd(-1,1)*SH*12:0,sz=SH>0?rnd(-1,1)*SH*12:0;
-  camCA=Math.cos(cam.a);camSA=Math.sin(cam.a);EYE=[cam.x+sx-camCA*480*k,cam.z+700*k,cam.y+sz-camSA*480*k];const lk=m4.look(EYE,[cam.x+sx,cam.z,cam.y+sz]);
+  camCA=Math.cos(cam.a);camSA=Math.sin(cam.a);EYE=[cam.x+sx-camCA*CAMBK*k,cam.z+CAMUP*k,cam.y+sz-camSA*CAMBK*k];const lk=m4.look(EYE,[cam.x+sx,cam.z,cam.y+sz]);
   CAMR=lk.r;CAMU=lk.u;CAMF=lk.f;VP=m4.mul(m4.persp(.8,cw/ch,40,18000),lk.m);
 }
-const vis=(x,z,r,y)=>{const k=1/Z,dh=cam.z-(y||0);if(dh<-430*k)return false;const f=Math.max(.75,1+dh/(700*k))*k,sh=Math.max(0,dh)*.69*k,dx=x-cam.x,dz=z-cam.y,u=dx*camCA+dz*camSA,w=-dx*camSA+dz*camCA;return Math.abs(w)<1250*f+r&&u<sh+850*f+r&&u>sh-520*f-r};
+const vis=(x,z,r,y)=>{const k=1/Z,dh=cam.z-(y||0);if(dh<-400*k)return false;const f=Math.max(.75,1+dh/(CAMUP*k))*k,sh=Math.max(0,dh)*(CAMBK/CAMUP)*k,dx=x-cam.x,dz=z-cam.y,u=dx*camCA+dz*camSA,w=-dx*camSA+dz*camCA;return Math.abs(w)<1800*f+r&&u<sh+1500*f+r&&u>sh-520*f-r};
 function proj(x,y,z){const m=VP,w=m[3]*x+m[7]*y+m[11]*z+m[15];if(w<=1)return null;return[((m[0]*x+m[4]*y+m[8]*z+m[12])/w*.5+.5)*cw,(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/w*.5+.5))*ch,w]}
 const ppu=w=>(ch*.5)/(Math.tan(.4)*w);
 function ptrs(stride,spec){gl.bindBuffer(gl.ARRAY_BUFFER,spec.b);for(const [i,n,o] of spec.a)gl.vertexAttribPointer(i,n,gl.FLOAT,false,stride,o)}
