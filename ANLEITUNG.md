@@ -4,6 +4,8 @@ Das Spiel liegt in `www/index.html`. Alles andere ist fertig vorbereitet.
 
 Das Spiel ist in 3D: Es nutzt einen eigenen WebGL-Renderer in derselben Datei, es werden keine Bibliotheken nachgeladen. Die Steuerung und alle Spielregeln sind unverändert, nur die Kamera schaut schräg auf die Szene.
 
+Das Spielfeld hat außerdem eine Höhe (Z-Achse, ±60 Einheiten auf der Anzeige): Mit den Tasten ▲ HOCH und ▼ RUNTER am rechten Bildschirmrand (Tastatur: Leertaste / Umschalt) fliegst du nach oben und unten. Gegner, Geschosse und Beute haben ebenfalls eine Höhe, Stationen und Sonnen liegen auf Höhe 0. Dünne Linien zeigen, wie hoch ein Objekt über oder unter der Spielebene schwebt.
+
 ## Weg A: Ohne Android Studio, direkt bei GitHub (auch vom Handy)
 
 1. Kostenloses Konto auf github.com anlegen und ein neues Repository erstellen (privat ist ok).
