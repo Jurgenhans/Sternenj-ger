@@ -121,6 +121,22 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
 .btnrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 #help{display:grid;gap:4px;font-size:14px;color:var(--dim);text-align:left}
 #help b{color:var(--text);font-weight:700}
+/* Startmenü darf scrollen (kleine Querformat-Displays); ::before/::after zentrieren, solange alles passt */
+#title{justify-content:flex-start;overflow-y:auto;touch-action:pan-y}
+#title::before,#title::after{content:'';margin:auto}
+/* Login: 4 Zeichen = ID und Passwort in einem */
+#login{display:grid;gap:8px;justify-items:center}
+#login label{font-family:var(--f-d);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+#code{box-sizing:content-box;width:4.4em;padding:8px 10px;text-align:center;text-indent:.35em;text-transform:uppercase;
+  font-family:var(--f-d);font-weight:700;font-size:28px;letter-spacing:.35em;color:var(--cyan);background:rgba(5,12,24,.7);
+  border:1px solid var(--line);border-radius:2px;pointer-events:auto;user-select:text;-webkit-user-select:text;touch-action:manipulation}
+#code:focus{border-color:var(--cyan);box-shadow:0 0 14px rgba(56,217,255,.35)}
+#code:disabled{opacity:.6}
+#loginmsg{min-height:1.4em;max-width:40ch;font-size:14px;line-height:1.4;color:var(--dim)}
+#loginmsg.err{color:var(--danger)}
+#who{display:flex;gap:12px;align-items:center;justify-content:center;font-family:var(--f-d);font-size:13px;letter-spacing:.1em;color:var(--dim)}
+#who b{color:var(--cyan);letter-spacing:.3em;font-size:18px}
+@media (max-height:480px){#title{gap:8px}#title .b{min-height:36px}#code{font-size:22px;padding:5px 8px}}
 #station{align-items:stretch;justify-content:flex-start;gap:0;text-align:left;padding-block:8px;background:rgba(4,9,20,.97)}
 .sth{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:4px 0 8px}
 .sth h2{font-size:20px}
@@ -192,7 +208,18 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
     <div><b>Station</b> · daneben fliegen, dann ANDOCKEN (E)</div>
     <div><b>Tasten</b> · F Feuer, C Tarnung, M Karte, P Pause</div>
   </div>
-  <div class="btnrow">
+  <div id="login">
+    <label for="code">Dein 4-stelliger Code</label>
+    <input id="code" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-describedby="loginmsg">
+    <div class="btnrow"><button class="b pri" id="blogin" disabled>Anmelden</button></div>
+    <div class="btnrow" id="newrow" hidden>
+      <button class="b" id="bcreate">Code neu anlegen</button>
+      <button class="b" id="bcancel">Anderer Code</button>
+    </div>
+  </div>
+  <div id="loginmsg" role="status" aria-live="polite"></div>
+  <div id="who" hidden>Angemeldet als <b id="whocode"></b><button class="b sm" id="blogout">Abmelden</button></div>
+  <div class="btnrow" id="gamebtns" hidden>
     <button class="b pri" id="bcont" hidden>Weiterspielen</button>
     <button class="b" id="bnew">Neues Spiel</button>
   </div>
@@ -1429,7 +1456,63 @@ function setMap(on){
 }
 function tryDock(){if(mode==='play'&&nearSys>=0&&!P.dead){if(P.grab){toast('Du wirst festgehalten','#ff4d4d');return}P.z=P.vz=0;openStation(nearSys)}}
 function toggleFire(){if(mode==='play')P.fire=!P.fire}
+/* ---------- Login (Supabase) ----------
+   Der 4-stellige Code ist ID und Passwort in einem. Die Tabelle "spieler" ist per RLS gesperrt,
+   erreichbar nur über die Funktionen spieler_login und spieler_anlegen. Der publishable Key ist öffentlich gedacht. */
+const SB_URL='https://bxzqmildhurhzxhtngeb.supabase.co',SB_KEY='sb_publishable_jCHnXCuUyIiz8qYF7NgPDg_duhlngRc',CODEKEY='sternenjaeger_code';
+let user=null,busy=false,pend='';
+async function rpc(fn,args){
+  const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),8000);
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(args),signal:ac.signal});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return await r.json();
+  }finally{clearTimeout(tm)}
+}
+const NONET='Keine Verbindung zu Supabase. Bitte Internet prüfen und erneut versuchen.';
+function loginMsg(txt,err){const m=$('loginmsg');m.textContent=txt||'';m.className=err?'err':''}
+function loginUI(){$('code').disabled=busy;$('blogin').disabled=busy||$('code').value.length!==4;$('bcreate').disabled=busy}
+function showIn(code){
+  user=code;try{localStorage.setItem(CODEKEY,code)}catch(e){}
+  $('login').hidden=true;$('who').hidden=false;$('whocode').textContent=code;$('gamebtns').hidden=false;$('newrow').hidden=true;pend='';loginMsg('');
+}
+function showOut(){
+  user=null;pend='';$('login').hidden=false;$('who').hidden=true;$('gamebtns').hidden=true;$('newrow').hidden=true;$('code').value='';loginMsg('');loginUI();
+}
+async function doLogin(code,silent){
+  busy=true;loginUI();loginMsg('Verbinde mit Supabase …');
+  try{
+    const r=await rpc('spieler_login',{p_code:code});
+    if(r.status==='ok'){showIn(r.code);return}
+    if(r.status==='unknown'){
+      if(silent){try{localStorage.removeItem(CODEKEY)}catch(e){}$('code').value='';loginMsg('');return}
+      pend=code;$('newrow').hidden=false;loginMsg('Den Code „'+code+'“ gibt es noch nicht. Neu anlegen?');return;
+    }
+    loginMsg('Bitte genau 4 Zeichen (A–Z, 0–9) eingeben.',true);
+  }catch(e){loginMsg(NONET,true)}
+  finally{busy=false;loginUI()}
+}
+$('code').addEventListener('input',e=>{
+  const v=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);if(v!==e.target.value)e.target.value=v;
+  $('newrow').hidden=true;pend='';if(!busy)loginMsg('');loginUI();
+});
+$('code').addEventListener('keydown',e=>{if(e.key==='Enter'&&!$('blogin').disabled)$('blogin').click()});
+$('blogin').onclick=()=>{const c=$('code').value;if(c.length===4&&!busy)doLogin(c,false)};
+$('bcreate').onclick=async()=>{
+  if(busy||!pend)return;busy=true;loginUI();loginMsg('Lege Code an …');
+  try{
+    const r=await rpc('spieler_anlegen',{p_code:pend});
+    if(r.status==='ok'){showIn(r.code);return}
+    if(r.status==='taken'){$('newrow').hidden=true;pend='';loginMsg('Dieser Code ist inzwischen vergeben. Tippe auf Anmelden oder wähle einen anderen.',true);return}
+    loginMsg('Ungültiger Code.',true);
+  }catch(e){loginMsg(NONET,true)}
+  finally{busy=false;loginUI()}
+};
+$('bcancel').onclick=()=>{$('newrow').hidden=true;pend='';loginMsg('');$('code').value='';loginUI();$('code').focus()};
+$('blogout').onclick=()=>{try{localStorage.removeItem(CODEKEY)}catch(e){}showOut()};
+
 function start(cont){
+  if(!user)return;
   if(cont){if(!loadSave())newGame()}else newGame();
   $('title').hidden=true;$('hud').hidden=false;mode='play';modSig='';cam.x=P.x;cam.y=P.y;cam.z=P.z||0;cam.a=P.ang;
   toast('Fliege zur Station, um Module einzubauen','#38d9ff');
@@ -1449,6 +1532,7 @@ zone.addEventListener('pointermove',e=>{
 function joyEnd(e){if(e.pointerId!==joy.id)return;joy.on=false;joy.x=joy.y=0;stickEl.hidden=true}
 zone.addEventListener('pointerup',joyEnd);zone.addEventListener('pointercancel',joyEnd);
 window.addEventListener('keydown',e=>{
+  if(e.target&&e.target.id==='code')return; /* Tippen im Login-Feld löst keine Spieltasten aus */
   const k=e.key.toLowerCase();keys[k]=true;
   if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
   if(k==='e')tryDock();else if(k==='f')toggleFire();else if(k==='c')useCloak();
@@ -1492,6 +1576,8 @@ function frame(t){
 }
 newGame();resize();cam.x=P.x;cam.y=P.y;cam.z=P.z||0;cam.a=P.ang;
 if(hasSave())$('bcont').hidden=false;
+showOut();
+try{const c=localStorage.getItem(CODEKEY);if(c&&/^[A-Z0-9]{4}$/.test(c)){$('code').value=c;doLogin(c,true)}}catch(e){}
 requestAnimationFrame(frame);
 })();
 </script>
