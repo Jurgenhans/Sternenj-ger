@@ -1086,9 +1086,9 @@ function bankOf(o,ang){
   if(o._pa===undefined)o._pa=ang;let d=ang-o._pa;while(d>Math.PI)d-=TAU;while(d<-Math.PI)d+=TAU;o._pa=ang;
   const t=clamp(-d/(fdt||.016)*.1,-.55,.55);o._bk=(o._bk||0)+(t-(o._bk||0))*Math.min(1,fdt*8);return o._bk}
 function sw(x,z,a,px,py){return[x-px*Math.sin(a)-py*Math.cos(a),z+px*Math.cos(a)-py*Math.sin(a)]}
-function drawShip3(o,x,z,ang,rad,cls,key,spd,alpha,flash,pal){
+function drawShip3(o,x,z,ang,rad,cls,key,spd,alpha,flash,pal,tnt){
   const s=rad/1.15,bk=bankOf(o,ang),y=9+Math.sin(tmr*1.7+(o.sk||0)*6)*1.3*rad/14;
-  drawMesh(SHIPM[key][cls],model(x,y,z,-(ang+Math.PI/2),clamp((o.vz||0)/260,-.45,.45),bk,s,s,s),null,flash>0?Math.min(1,flash*2):0,alpha);
+  drawMesh(SHIPM[key][cls],model(x,y,z,-(ang+Math.PI/2),clamp((o.vz||0)/260,-.45,.45),bk,s,s,s),tnt||null,flash>0?Math.min(1,flash*2):0,alpha);
   if(spd>20){
     const len=clamp(spd/200,.2,1.3)*rad*.9*(.8+.2*Math.sin(tmr*40)),f=rgbS(pal.f),bx=-Math.cos(ang),bz=-Math.sin(ang);
     for(const q of ENG(cls)){const w=sw(x,z,ang,q[0]*s,q[1]*s),k=q[2];
@@ -1235,6 +1235,10 @@ function render3D(){
     for(const it of P.st.D){const a=tmr*1.7+it.id,dx=P.x+Math.cos(a)*30,dz=P.y+Math.sin(a)*30;drawMesh(SPH,model(dx,10,dz,0,0,0,3.5,3.5,3.5),[.49,1,.48],0,1,1);bill(CELL.glow,dx,10,dz,9,[.49,1,.48],.7)}
     if(P.grab){const g=P.grab,pr=rad+9,k0=tmr*1.8,f=.5+.5*Math.sin(tmr*10);ringG(P.x,P.y,pr,6,[.49,1,.75],.5+.4*f);for(let i=0;i<3;i++)arcB(P.x,P.y,pr,k0+i*TAU/3,k0+i*TAU/3+.55,7,4,LIME,1)}
   }
+  /* Mitspieler (über Supabase Realtime) */
+  for(const r of REM.values()){if(r.w!==WORLD||r.d||!vis(r.x,r.y,90,r.z))continue;const rad=SHIPS[r.cls].rad,cl=r.cl;YO=0;altLn(r.x,r.y,r.z,[.45,1,.65],.4);YO=r.z;
+    bill(CELL.glow,r.x,8,r.y,rad*2.6,[.45,1,.65],cl?.08:.24);
+    drawShip3(r,r.x,r.y,r.a,rad,r.cls,'P',Math.hypot(r.vx,r.vy),cl?.3:1,0,PAL_A,TINT_A);YO=0}
   YO=0;limits();if(!main)abyssFront();
   flushLit();
   /* Leuchtendes: Geschosse, Blitze, Ringe, Funken */
@@ -1273,6 +1277,7 @@ function drawOverlay(){
     if(P.grab)lab('GEPACKT '+Math.max(0,P.grab.tt).toFixed(1)+' s',P.x+camCA*(rad+23),24+P.z,P.y+camSA*(rad+23),15,'#7dffc0');
     if(FLR.some(f=>f.age<f.warn&&flareHit(f,P.x,P.y,rad,P.z)))lab('ERUPTION · AUSWEICHEN',P.x+camCA*(rad+44),24+P.z,P.y+camSA*(rad+44),15,'#ff5a3c',.65+.3*Math.sin(tmr*14));
   }
+  for(const r of REM.values()){if(r.w!==WORLD||r.d||!vis(r.x,r.y,90,r.z))continue;const rad=SHIPS[r.cls].rad;lab(r.code,r.x+camCA*(rad+22),24+r.z,r.y+camSA*(rad+22),17,'#7dffc0',r.cl?.5:1)}
   for(const t of TX)lab(t.txt,t.x,24+(t.z||0),t.y,13,t.col,clamp(t.life*2,0,1));
 }
 
@@ -1292,6 +1297,8 @@ function drawRadar(){
   c.fillStyle='#ffd04a';for(const l of L){const [dx,dy]=rt((l.x-P.x)*k,(l.y-P.y)*k);if(dx*dx+dy*dy>(R-6)*(R-6))continue;c.fillRect(R+dx-1.5,R+dy-1.5,3,3)}
   if(WORLD==='main'&&BH){let [dx,dy]=rt((BH.x-P.x)*k,(BH.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-12;if(d>m){dx*=m/d;dy*=m/d}c.fillStyle='#c06bff';c.beginPath();c.arc(R+dx,R+dy,5,0,TAU);c.fill()}
   if(WORLD==='abyss'){c.strokeStyle='rgba(255,60,60,.75)';c.lineWidth=2;c.beginPath();c.arc(R+rt((ABX-P.x)*k,(ABY-P.y)*k)[0],R+rt((ABX-P.x)*k,(ABY-P.y)*k)[1],ABR*k,0,TAU);c.stroke()}
+  for(const r of REM.values()){if(r.w!==WORLD||r.d)continue;let [dx,dy]=rt((r.x-P.x)*k,(r.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-10;if(d>m){dx*=m/d;dy*=m/d}
+    c.fillStyle='#ffffff';c.strokeStyle='#44e07a';c.lineWidth=2;c.beginPath();c.arc(R+dx,R+dy,4.5,0,TAU);c.fill();c.stroke()}
   c.fillStyle='#44e07a';c.beginPath();c.arc(R,R,4,0,TAU);c.fill();
 }
 function drawMapAby(){
@@ -1475,9 +1482,10 @@ function loginUI(){$('code').disabled=busy;$('blogin').disabled=busy||$('code').
 function showIn(code){
   user=code;try{localStorage.setItem(CODEKEY,code)}catch(e){}
   $('login').hidden=true;$('who').hidden=false;$('whocode').textContent=code;$('gamebtns').hidden=false;$('newrow').hidden=true;pend='';loginMsg('');
+  rtStart();
 }
 function showOut(){
-  user=null;pend='';$('login').hidden=false;$('who').hidden=true;$('gamebtns').hidden=true;$('newrow').hidden=true;$('code').value='';loginMsg('');loginUI();
+  rtStop();user=null;pend='';$('login').hidden=false;$('who').hidden=true;$('gamebtns').hidden=true;$('newrow').hidden=true;$('code').value='';loginMsg('');loginUI();
 }
 async function doLogin(code,silent){
   busy=true;loginUI();loginMsg('Verbinde mit Supabase …');
@@ -1510,6 +1518,80 @@ $('bcreate').onclick=async()=>{
 };
 $('bcancel').onclick=()=>{$('newrow').hidden=true;pend='';loginMsg('');$('code').value='';loginUI();$('code').focus()};
 $('blogout').onclick=()=>{try{localStorage.removeItem(CODEKEY)}catch(e){}showOut()};
+
+/* ---------- Mehrspieler (Supabase Realtime, Broadcast) ----------
+   Öffentlicher Channel, ohne Bibliothek, Realtime-Protokoll 1.0.0 (Phoenix-JSON). Gesendet wird nur die Position
+   des eigenen Schiffs; Gegner, Beute und Spielstand bleiben lokal. Allein im Channel geht 1 Nachricht pro Sekunde raus,
+   ist ein Mitspieler da und man bewegt sich, sind es etwa 9 pro Sekunde (Gratis-Kontingent: 2 Mio. Nachrichten/Monat). */
+const RT_TOPIC='realtime:sternenjaeger-lobby',RT_URL='wss://bxzqmildhurhzxhtngeb.supabase.co/realtime/v1/websocket?apikey='+SB_KEY+'&vsn=1.0.0';
+const SID=Math.random().toString(36).slice(2,8).padEnd(6,'0'),REM=new Map(),PAL_A={f:'120,255,170'},TINT_A=[.6,1.45,.8];
+let ws=null,rtOk=false,rtWant=false,rtRef=1,rtTm=0,rtBack=2000,lastTx=0,lastRx=0,lastSig='';
+function rtCast(name,data){
+  if(!ws||ws.readyState!==1)return;
+  ws.send(JSON.stringify({topic:RT_TOPIC,event:'broadcast',payload:{type:'broadcast',event:name,payload:data},ref:String(++rtRef),join_ref:'1'}));
+}
+function rtConnect(){
+  if(!rtWant||ws)return;
+  let s;try{s=new WebSocket(RT_URL)}catch(e){rtRetry();return}
+  ws=s;rtOk=false;
+  const hb=setInterval(()=>{if(s.readyState===1)s.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:String(++rtRef)}))},20000);
+  s.onopen=()=>{s.send(JSON.stringify({topic:RT_TOPIC,event:'phx_join',payload:{config:{broadcast:{ack:false,self:false},presence:{enabled:false},private:false}},ref:'1',join_ref:'1'}))};
+  s.onmessage=ev=>{
+    if(typeof ev.data!=='string')return;let m;try{m=JSON.parse(ev.data)}catch(e){return}
+    if(!m||typeof m!=='object'||m.topic!==RT_TOPIC)return;
+    if(m.event==='phx_reply'&&m.ref==='1'){
+      if(m.payload&&m.payload.status==='ok'){rtOk=true;rtBack=2000;toast('Mehrspieler verbunden','#44e07a');rtTx(true)}
+      else{toast('Mehrspieler: Beitritt abgelehnt','#ff4d4d');try{s.close()}catch(e){}}
+    }else if(m.event==='broadcast'&&m.payload&&typeof m.payload==='object'){
+      if(m.payload.event==='pos')rtRx(m.payload.payload);
+      else if(m.payload.event==='bye'&&m.payload.payload&&REM.has(m.payload.payload.s)){const r=REM.get(m.payload.payload.s);REM.delete(m.payload.payload.s);toast(r.code+' hat das Spiel verlassen','#7e9bb1')}
+    }else if(m.event==='phx_error'||m.event==='phx_close'){try{s.close()}catch(e){}}
+  };
+  s.onclose=()=>{
+    clearInterval(hb);if(ws!==s)return;
+    ws=null;const was=rtOk;rtOk=false;REM.clear();
+    if(was&&rtWant)toast('Mehrspieler getrennt, verbinde neu …','#ffb347');
+    rtRetry();
+  };
+  s.onerror=()=>{try{s.close()}catch(e){}};
+}
+function rtRetry(){if(!rtWant)return;clearTimeout(rtTm);rtTm=setTimeout(rtConnect,rtBack);rtBack=Math.min(rtBack*2,15000)}
+function rtStart(){rtWant=true;rtBack=2000;rtConnect()}
+function rtStop(){
+  rtWant=false;clearTimeout(rtTm);if(rtOk)rtCast('bye',{s:SID});
+  const s=ws;ws=null;rtOk=false;REM.clear();if(s){try{s.close()}catch(e){}}
+}
+function rtTx(force){
+  if(!rtOk||!user||!P||mode==='title')return;
+  const now=performance.now(),sig=Math.round(P.x)+','+Math.round(P.y)+','+Math.round(P.z)+','+P.ang.toFixed(2),gap=force?0:(now-lastRx<6000&&sig!==lastSig?110:1000);
+  if(now-lastTx<gap)return;
+  lastTx=now;lastSig=sig;
+  const r1=v=>Math.round(v*10)/10;
+  rtCast('pos',{s:SID,c:user,w:WORLD==='abyss'?1:0,k:P.cls,x:r1(P.x),y:r1(P.y),z:r1(P.z),a:Math.round(P.ang*1000)/1000,u:Math.round(P.vx),v:Math.round(P.vy),h:Math.round(P.vz||0),l:P.cloak>0?1:0,d:P.dead?1:0});
+}
+function rtRx(d){
+  if(!d||typeof d!=='object'||d.s===SID)return;
+  const sid=String(d.s||''),code=String(d.c||'');
+  if(!/^[a-z0-9]{3,12}$/.test(sid)||!/^[A-Z0-9]{4}$/.test(code))return;
+  const n=(k,lo,hi)=>{const v=d[k];return typeof v==='number'&&isFinite(v)?clamp(v,lo,hi):0};
+  let r=REM.get(sid);
+  if(!r){if(REM.size>=8)return;r={sid,code,fresh:true,vz:0};REM.set(sid,r);toast(code+' ist im Spiel','#7dffc0')}
+  const now=performance.now();lastRx=now;
+  r.code=code;r.t=now;r.w=d.w===1?'abyss':'main';r.cls=Math.round(n('k',0,SHIPS.length-1));
+  r.tx=n('x',-300,W+300);r.ty=n('y',-300,H+300);r.tz=n('z',-ZR,ZR);r.ta=n('a',-7,7);
+  r.vx=n('u',-1500,1500);r.vy=n('v',-1500,1500);r.vz=n('h',-1500,1500);r.cl=d.l===1;r.d=d.d===1;
+  if(r.fresh){r.x=r.tx;r.y=r.ty;r.z=r.tz;r.a=r.ta;r.fresh=false}
+}
+function rtStep(dt){
+  const now=performance.now();
+  for(const [k,r] of REM){
+    if(now-r.t>4000){REM.delete(k);toast(r.code+' hat das Spiel verlassen','#7e9bb1');continue}
+    const age=Math.min(.3,(now-r.t)/1000),f=Math.min(1,dt*10);
+    r.x+=(r.tx+r.vx*age-r.x)*f;r.y+=(r.ty+r.vy*age-r.y)*f;r.z+=(r.tz+r.vz*age*.5-r.z)*f;
+    let da=r.ta-r.a;while(da>Math.PI)da-=TAU;while(da<-Math.PI)da+=TAU;r.a+=da*Math.min(1,dt*12);
+  }
+}
+window.addEventListener('pagehide',()=>{if(rtOk)rtCast('bye',{s:SID})});
 
 function start(cont){
   if(!user)return;
@@ -1566,6 +1648,7 @@ let last=0,hacc=0;
 function frame(t){
   const dt=Math.min(.05,(t-last)/1000||0);last=t;
   if(mode==='play'||mode==='dead')updWorld(dt);else if(mode==='title')tmr+=dt;
+  rtStep(dt);if(user)rtTx(false);
   if(cv.clientWidth!==cw||cv.clientHeight!==ch)resize();
   const f=Math.min(1,dt*7);cam.x+=(P.x-cam.x)*f;cam.y+=(P.y-cam.y)*f;{const zi=(zIn||keys['+']||keys['=']?1:0)-(zOut||keys['-']||keys['_']?1:0);if(zi)zoomTo(ZUt*Math.exp(zi*dt*1.1));if(Math.abs(ZUt-ZU)>.0004){ZU+=(ZUt-ZU)*Math.min(1,dt*10);Z=Zb*ZU}}
   cam.z+=((P.z||0)-cam.z)*f;{let da=P.ang-cam.a;while(da>Math.PI)da-=TAU;while(da<-Math.PI)da+=TAU;cam.a+=da*Math.min(1,dt*5);if(cam.a>Math.PI)cam.a-=TAU;else if(cam.a<-Math.PI)cam.a+=TAU}
