@@ -136,6 +136,7 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
 #loginmsg.err{color:var(--danger)}
 #who{display:flex;gap:12px;align-items:center;justify-content:center;font-family:var(--f-d);font-size:13px;letter-spacing:.1em;color:var(--dim)}
 #who b{color:var(--cyan);letter-spacing:.3em;font-size:18px}
+#offwho{display:flex;gap:12px;align-items:center;justify-content:center;font-family:var(--f-d);font-size:13px;letter-spacing:.1em;color:var(--dim)}
 @media (max-height:480px){#title{gap:8px}#title .b{min-height:36px}#code{font-size:22px;padding:5px 8px}}
 #station{align-items:stretch;justify-content:flex-start;gap:0;text-align:left;padding-block:8px;background:rgba(4,9,20,.97)}
 .sth{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:4px 0 8px}
@@ -211,7 +212,7 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
   <div id="login">
     <label for="code">Dein 4-stelliger Code</label>
     <input id="code" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-describedby="loginmsg">
-    <div class="btnrow"><button class="b pri" id="blogin" disabled>Anmelden</button></div>
+    <div class="btnrow"><button class="b pri" id="blogin" disabled>Anmelden</button><button class="b" id="boffline">Offline spielen</button></div>
     <div class="btnrow" id="newrow" hidden>
       <button class="b" id="bcreate">Code neu anlegen</button>
       <button class="b" id="bcancel">Anderer Code</button>
@@ -219,6 +220,7 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
   </div>
   <div id="loginmsg" role="status" aria-live="polite"></div>
   <div id="who" hidden>Angemeldet als <b id="whocode"></b><button class="b sm" id="blogout">Abmelden</button></div>
+  <div id="offwho" hidden>Offline-Modus · Mehrspieler aus<button class="b sm" id="bonline">Online anmelden</button></div>
   <div class="btnrow" id="gamebtns" hidden>
     <button class="b pri" id="bcont" hidden>Weiterspielen</button>
     <button class="b" id="bnew">Neues Spiel</button>
@@ -1476,28 +1478,36 @@ async function rpc(fn,args){
     return await r.json();
   }finally{clearTimeout(tm)}
 }
-const NONET='Keine Verbindung zu Supabase. Bitte Internet prüfen und erneut versuchen.';
+const NONET='Keine Verbindung zu Supabase. Bitte Internet prüfen und erneut versuchen.',OFFKEY='sternenjaeger_offline';
+/* Offline-Modus: Spiel und Spielstand laufen komplett lokal; nur Login und Mehrspieler brauchen das Netz. */
+function goOffline(persist){
+  rtStop();user=null;pend='';
+  if(persist){try{localStorage.setItem(OFFKEY,'1')}catch(e){}}
+  $('login').hidden=true;$('who').hidden=true;$('offwho').hidden=false;$('gamebtns').hidden=false;$('newrow').hidden=true;loginMsg('');
+}
 function loginMsg(txt,err){const m=$('loginmsg');m.textContent=txt||'';m.className=err?'err':''}
 function loginUI(){$('code').disabled=busy;$('blogin').disabled=busy||$('code').value.length!==4;$('bcreate').disabled=busy}
 function showIn(code){
-  user=code;try{localStorage.setItem(CODEKEY,code)}catch(e){}
+  user=code;try{localStorage.setItem(CODEKEY,code);localStorage.removeItem(OFFKEY)}catch(e){}
+  $('offwho').hidden=true;
   $('login').hidden=true;$('who').hidden=false;$('whocode').textContent=code;$('gamebtns').hidden=false;$('newrow').hidden=true;pend='';loginMsg('');
   rtStart();
 }
 function showOut(){
-  rtStop();user=null;pend='';$('login').hidden=false;$('who').hidden=true;$('gamebtns').hidden=true;$('newrow').hidden=true;$('code').value='';loginMsg('');loginUI();
+  rtStop();user=null;pend='';$('login').hidden=false;$('who').hidden=true;$('offwho').hidden=true;$('gamebtns').hidden=true;$('newrow').hidden=true;$('code').value='';loginMsg('');loginUI();
 }
 async function doLogin(code,silent){
   busy=true;loginUI();loginMsg('Verbinde mit Supabase …');
   try{
     const r=await rpc('spieler_login',{p_code:code});
+    if(!$('offwho').hidden)return;
     if(r.status==='ok'){showIn(r.code);return}
     if(r.status==='unknown'){
       if(silent){try{localStorage.removeItem(CODEKEY)}catch(e){}$('code').value='';loginMsg('');return}
       pend=code;$('newrow').hidden=false;loginMsg('Den Code „'+code+'“ gibt es noch nicht. Neu anlegen?');return;
     }
     loginMsg('Bitte genau 4 Zeichen (A–Z, 0–9) eingeben.',true);
-  }catch(e){loginMsg(NONET,true)}
+  }catch(e){if(silent){goOffline(false);loginMsg('Keine Verbindung: Offline-Modus aktiv.')}else loginMsg(NONET,true)}
   finally{busy=false;loginUI()}
 }
 $('code').addEventListener('input',e=>{
@@ -1517,6 +1527,8 @@ $('bcreate').onclick=async()=>{
   finally{busy=false;loginUI()}
 };
 $('bcancel').onclick=()=>{$('newrow').hidden=true;pend='';loginMsg('');$('code').value='';loginUI();$('code').focus()};
+$('boffline').onclick=()=>goOffline(true);
+$('bonline').onclick=()=>{try{localStorage.removeItem(OFFKEY)}catch(e){}showOut();try{const c=localStorage.getItem(CODEKEY);if(c&&/^[A-Z0-9]{4}$/.test(c)){$('code').value=c;loginUI()}}catch(e){}};
 $('blogout').onclick=()=>{try{localStorage.removeItem(CODEKEY)}catch(e){}showOut()};
 
 /* ---------- Mehrspieler (Supabase Realtime, Broadcast) ----------
@@ -1660,7 +1672,11 @@ function frame(t){
 newGame();resize();cam.x=P.x;cam.y=P.y;cam.z=P.z||0;cam.a=P.ang;
 if(hasSave())$('bcont').hidden=false;
 showOut();
-try{const c=localStorage.getItem(CODEKEY);if(c&&/^[A-Z0-9]{4}$/.test(c)){$('code').value=c;doLogin(c,true)}}catch(e){}
+(function(){let off=false;try{off=localStorage.getItem(OFFKEY)==='1'}catch(e){}
+  if(off){goOffline(true);return}
+  if(!navigator.onLine){goOffline(false);loginMsg('Keine Verbindung: Offline-Modus aktiv.');return}
+  try{const c=localStorage.getItem(CODEKEY);if(c&&/^[A-Z0-9]{4}$/.test(c)){$('code').value=c;doLogin(c,true)}}catch(e){}
+})();
 requestAnimationFrame(frame);
 })();
 </script>
