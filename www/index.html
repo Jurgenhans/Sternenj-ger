@@ -217,6 +217,7 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
         <button class="rb" id="bwarp">WARP</button>
         <button class="rb on" id="bfire">FEUER<br>AUTO</button>
         <button class="rb dock" id="bdock" hidden>ANDOCKEN</button>
+        <button class="rb dock" id="bland" hidden>LANDEN</button>
       </div>
     </div>
   </div>
@@ -255,7 +256,7 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
 </div>
 <div class="ov" id="skills" hidden>
   <h2>SKILLS</h2>
-  <p>Passive Skills durch NPC-Abschüsse. Es zählt immer nur ein Skill mit: wähle, welcher. Regen und Reaktor wirken wie ein Modul der gleichen Stufe, Schild Punkte, Waffenschaden, Energiesparen und Waffenreichweite bringen feste Boni pro Stufe.</p>
+  <p>Passive Skills durch NPC-Abschüsse. Es zählt immer nur ein Skill mit: wähle, welcher. Regen und Reaktor wirken wie ein Modul der gleichen Stufe, Schild Punkte, Waffenschaden, Energiesparen, Waffenreichweite und Dämpfung (−1 % Schaden pro Stufe, zusammen mit Dämpfer-Modulen höchstens 95 %) bringen feste Boni pro Stufe.</p>
   <div id="skhead" class="cur" style="font-family:var(--f-d);letter-spacing:.06em;color:var(--gold)"></div>
   <div id="skl"></div>
   <button class="b" id="bskx">Schließen</button>
@@ -268,6 +269,7 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
   <p>Die Taste N schaltet den Ton ebenfalls um.</p>
   <button class="b" id="bsetx">Schließen</button>
 </div>
+<div class="ov" id="land" hidden><h2 id="landname">LYRA I</h2><p>Du bist auf dem Planeten gelandet. Schiff repariert und aufgeladen.</p><button class="b pri" id="bliftoff">Abheben</button></div>
 <div class="ov" id="pause" hidden><h2>PAUSE</h2><button class="b pri" id="bresume">Weiter</button></div>
 <div class="ov" id="dead" hidden><h2 style="color:var(--danger)">SCHIFF ZERSTÖRT</h2><p>Fracht und 15 % der Credits sind verloren. Eingebaute Module bleiben erhalten.</p><button class="b pri" id="brespawn">An der Station neu starten</button></div>
 <div class="ov" id="map" hidden><canvas id="mapc" width="640" height="640"></canvas><button class="b" id="bmapx">Schließen</button></div>
@@ -296,9 +298,9 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const fmt=n=>Math.round(n).toLocaleString('de-DE');
 const ABX=8000,ABY=8000,ABR=1500;
 /* FS: Spielfeld 100x größer, SC: Sonnensysteme 75x größer (Schiffe, Stationen und Gegner behalten ihre Größe) */
-const FS=100,SC=75,W=16000*FS,H=16000*FS,SR0=1150,SAVE='sternenjaeger_v1';
+const FS=100,SC=75,WS=2.5,W=16000*FS*WS,H=16000*FS*WS,SR0=1150,SAVE='sternenjaeger_v1';
 /* Z-Achse: Flughöhe von -ZR bis +ZR, Ebene 0 = Höhe von Sonnen und Stationen */
-const LOOTR=450,TURN=2.5,ZR=600,VSP=.62,FLH=130,DOCKZ=160;const zrnd=()=>rnd(-ZR*.5,ZR*.5);
+const LOOTR=450,TURN=2.5,VSP=.62,FLH=130,DOCKZ=160;let ZR=1500;const ZR0=1500,ZRA=600;const zrnd=()=>rnd(-300,300);
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 /* ---------- Systeme ---------- */
@@ -311,25 +313,29 @@ const SYS=[
   {name:'PYRA',x:13800,y:9600,lv:6,col:'#ff7a1a',fl:.85,bo:0,sf:{i0:6,i1:11,hw:.16,pct:.045}},
   {name:'TEMPEST',x:4500,y:2800,lv:7,col:'#9fe8ff',fl:0,bo:.85,bf:2},
   {name:'ZENITH',x:11800,y:2800,lv:8,col:'#f2f58a',fl:.5,bo:.5},
-  {name:'XENOS',x:8000,y:3300,lv:9,col:'#7dffc0',fl:0,bo:0,al:1,ns:1} /* ns: keine Station */
+  {name:'XENOS',x:8000,y:3300,lv:9,col:'#7dffc0',fl:0,bo:0,al:1,ns:1}, /* ns: keine Station */
+  {name:'LYRA',x:11000,y:17200,lv:1,col:'#8affc8',fl:0,bo:0,ns:1,np:1,nr:1} /* unterhalb von Vega: ein Planet, keine Station, keine Gegner */,
+  {name:'SIRIUS',x:2000,y:17200,lv:1,col:'#ffe38a',fl:0,bo:0,ns:1,np:1,nr:1} /* Kopie von LYRA, unterhalb von Helios */
 ];
 const BOSSI=7, ALI=8, KBI=1; /* KBI: Kepler (Stufe 2) hat einen eigenen Titan-Boss */
-const MIX=[[9,1,0],[8,3,0],[21,12,3],[6,5,2],[5,6,3],[5,7,3],[12,21,12],[8,12,10],[6,4,2]]; /* Index 2 = Vega: 3x NPCs (vorher 7/4/1), Index 6 = Tempest: 3x NPCs (vorher 4/7/4), Index 7 = Zenith: 2x NPCs (vorher 4/6/5) */
+const MIX=[[9,1,0],[8,3,0],[21,12,3],[6,5,2],[5,6,3],[5,7,3],[12,21,12],[8,12,10],[6,4,2],[0,0,0],[0,0,0]]; /* Index 2 = Vega: 3x NPCs (vorher 7/4/1), Index 6 = Tempest: 3x NPCs (vorher 4/7/4), Index 7 = Zenith: 2x NPCs (vorher 4/6/5) */
 const ROM=['I','II','III','IV'];
 const rng0=mulberry(77), AST=[];
 SYS.forEach((s,i)=>{
-  s.x*=FS;s.y*=FS;s.k=i===BOSSI?1:SC;s.R=1150*s.k;const a=rng0()*TAU; s.sx=s.x+Math.cos(a)*520*s.k; s.sy=s.y+Math.sin(a)*520*s.k; s.max=MIX[i].reduce((p,c)=>p+c,0)*(s.k>1?3:1);
-  if(s.k>1){const ds=Math.atan2(s.y-s.sy,s.x-s.sx);s.sp=[{x:s.sx+Math.cos(ds+.5)*14000,y:s.sy+Math.sin(ds+.5)*14000},{x:s.sx+Math.cos(ds-.45)*48000,y:s.sy+Math.sin(ds-.45)*48000}]} /* Punkt 1: normale Anzahl NPCs, Punkt 2 (weiter von der Station): doppelte Anzahl */
+  const rg=s.nr?mulberry(31337):rng0;s.x*=FS;s.y*=FS;s.k=i===BOSSI?1:SC;s.R=1150*s.k;const a=rg()*TAU; s.sx=s.x+Math.cos(a)*520*s.k; s.sy=s.y+Math.sin(a)*520*s.k; s.max=MIX[i].reduce((p,c)=>p+c,0)*(s.k>1?3:1);
+  if(s.k>1&&!s.nr){const ds=Math.atan2(s.y-s.sy,s.x-s.sx);s.sp=[{x:s.sx+Math.cos(ds+.5)*14000,y:s.sy+Math.sin(ds+.5)*14000},{x:s.sx+Math.cos(ds-.45)*48000,y:s.sy+Math.sin(ds-.45)*48000}]} /* Punkt 1: normale Anzahl NPCs, Punkt 2 (weiter von der Station): doppelte Anzahl */
  
-  s.pl=[]; const n=2+(i%2);
-  for(let k=0;k<n;k++)s.pl.push({o:rng0()*TAU,r:(200+k*210+rng0()*60)*s.k,sz:(16+rng0()*26)*s.k,sp:(0.02+rng0()*0.03)*(k%2?1:-1)/s.k,hue:rint(0,360)});
+  s.pl=[]; const n=s.np||2+(i%2);
+  for(let k=0;k<n;k++)s.pl.push({o:rg()*TAU,r:(200+k*210+rg()*60)*s.k,sz:(16+rg()*26)*s.k,sp:(0.02+rg()*0.03)*(k%2?1:-1)/s.k,hue:rint(0,360)});
   s.tm=3;s.ft=4+Math.random()*5;
 });
 function mkAst(cx,cy,r0,r1,n){for(let i=0;i<n;i++){const a=rng0()*TAU,r=r0+rng0()*(r1-r0),sz=5+rng0()*18,pts=[];const m=6+rint(0,3);
   for(let k=0;k<m;k++)pts.push([Math.cos(k/m*TAU)*sz*(.7+rng0()*.5),Math.sin(k/m*TAU)*sz*(.7+rng0()*.5)]);
   AST.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,sz,pts,rot:rng0()*TAU,d:rng0()>.5?1:-1})}}
-SYS.forEach(s=>mkAst(s.x,s.y,650*s.k,s.R+60*s.k,s.k>1?400:90));
-for(let i=0;i<300;i++)mkAst(rng0()*W,rng0()*H,0,260,12);
+SYS.forEach(s=>mkAst(s.x,s.y,650*s.k,s.R+60*s.k,s.nr?150:s.k>1?400:90));
+const LYL=SYS.map((s,i)=>s.nr?i:-1).filter(i=>i>=0);let nearPl=-1,LD=null,LDX=null;
+function planetPos(i){const s=SYS[i],p=s.pl[0],a=p.o+tmr*p.sp;return{x:s.x+Math.cos(a)*p.r,y:s.y+Math.sin(a)*p.r,sz:p.sz}}
+for(let i=0;i<300*WS*WS;i++)mkAst(rng0()*W,rng0()*H,0,260,12);
 const AAST=[];{const r=mulberry(4242);for(let i=0;i<80;i++){const a=r()*TAU,d=Math.sqrt(r())*ABR*.97,sz=6+r()*30,pts=[],m=6+Math.floor(r()*4);for(let k=0;k<m;k++)pts.push([Math.cos(k/m*TAU)*sz*(.7+r()*.5),Math.sin(k/m*TAU)*sz*(.7+r()*.5)]);AAST.push({x:ABX+Math.cos(a)*d,y:ABY+Math.sin(a)*d,sz,pts,rot:r()*TAU,d:r()>.5?1:-1})}}
 
 /* ---------- Nebel: außerhalb der Systeme, Radius 80 % eines Systems; schwer (oben), mittel, leer ---------- */
@@ -392,7 +398,7 @@ const TYPES=Object.keys(MT);
 const TS=[1,1.55,2.3,3.4], TP=[1,2.6,6.5,15], TC=['#9aa7b4','#44e07a','#4aa8ff','#b45cff'];
 let uid=1;
 const mk=(t,tier)=>({id:uid++,t,tier:tier||1});
-const CATC={laser:'#ff8a3d',plasma:'#7dff7a',rail:'#6fe3ff',missile:'#ff6060',drone:'#9cff6a',shield:'#4aa8ff',regen:'#38d9ff',armor:'#ffa31a',reactor:'#d070ff',engine:'#44e0c8',cloak:'#c79bff',flame:'#ff6a1a',bolt:'#9fe8ff',damper:'#5aa0ff'};
+const CATC={laser:'#ff8a3d',plasma:'#7dff7a',rail:'#6fe3ff',missile:'#ff6060',drone:'#9cff6a',shield:'#4aa8ff',regen:'#38d9ff',armor:'#ffa31a',reactor:'#d070ff',engine:'#44e0c8',cloak:'#c79bff',flame:'#ff6a1a',bolt:'#9fe8ff',damper:'#5aa0ff',damp:'#5aa0ff'};
 const catCol=t=>CATC[t]||'#9aa7b4';
 /* Schiffsvarianten: +20 % Schaden für eine Waffenart; Preis = 1,5 × Schiffspreis (Fregatte: Basis 2.000) */
 const VAR=['laser','plasma','rail','missile','flame','bolt','drone'],VBON=1.2;
@@ -411,7 +417,7 @@ function describe(it){
   if(m.c==='w')return `Schaden ${Math.round(m.dmg*k)} · ${(1/m.cd).toFixed(1).replace('.',',')}/s · ${Math.round(wEn(it))} Energie`;
   if(m.c==='d')return `Autoschuss ${Math.round(m.dmg*k)} · kostet keine Energie`;
   switch(it.t){
-    case 'damper':return '-'+m.pct[it.tier-1]+' % Schaden auf Schild und Struktur · max. 3 Module, zusammen höchstens 90 %';
+    case 'damper':return '-'+m.pct[it.tier-1]+' % Schaden auf Schild und Struktur · max. 3 Module, zusammen höchstens 95 %';
     case 'shield':return `+${Math.round(m.val*k)} Schild`;
     case 'armor':return `+${Math.round(m.val*k)} Struktur`;
     case 'regen':return `+${(m.val*k).toFixed(1).replace('.',',')} Schild pro Sekunde, im Kampf die Hälfte · bis zu 10 Module addieren sich`;
@@ -451,8 +457,8 @@ const LIM=t=>MT[t].c==='w'?5:t==='regen'?10:t==='damper'?3:2;
 const cntT=t=>P.slots.filter(x=>x&&x.t===t).length;
 /* Passive Skills: ab 10 Abschüssen Stufe 1, danach alle 20 eine Stufe mehr (bis 4). Wirkt wie ein Modul dieser Stufe. Abschüsse zählen nur für den gewählten Skill. */
 const SK_T=[10,30,50,70];
-let skK={regen:0,reactor:0,shield:0,dmg:0,een:0,range:0},skSel='regen';
-const SK_N={regen:'SCHILD REGEN',reactor:'REAKTOR',shield:'SCHILD PUNKTE',dmg:'WAFFENSCHADEN',een:'ENERGIESPAREN',range:'WAFFENREICHWEITE'},SK_SH=50,SK_DMG=2,SK_EN=2,SK_RANGE=10; /* Energiespar-Skill: -2 % Energieverbrauch aller Waffen pro Stufe */ /* Schaden-Skill: +2 % Schaden aller Waffen pro Stufe */ /* Schild-Skill: +50 Schild pro Stufe */ /* Abschüsse pro Skill; nur der gewählte Skill zählt mit */
+let skK={regen:0,reactor:0,shield:0,dmg:0,een:0,range:0,damp:0},skSel='regen';
+const SK_N={regen:'SCHILD REGEN',reactor:'REAKTOR',shield:'SCHILD PUNKTE',dmg:'WAFFENSCHADEN',een:'ENERGIESPAREN',range:'WAFFENREICHWEITE',damp:'DÄMPFUNG'},SK_DMP=1,SK_SH=50,SK_DMG=2,SK_EN=2,SK_RANGE=10; /* Energiespar-Skill: -2 % Energieverbrauch aller Waffen pro Stufe */ /* Schaden-Skill: +2 % Schaden aller Waffen pro Stufe */ /* Schild-Skill: +50 Schild pro Stufe */ /* Abschüsse pro Skill; nur der gewählte Skill zählt mit */
 const skLvl=t=>{let l=0;for(const x of SK_T)if(skK[t]>=x)l++;return l};
 function enforceLimits(){const c={};P.slots.forEach((it,i)=>{if(!it)return;c[it.t]=(c[it.t]||0)+1;if(c[it.t]>LIM(it.t)){P.storage.push(it);P.slots[i]=null}})}
 function stats(){
@@ -464,13 +470,13 @@ function stats(){
     else if(it.t==='reactor'){st.en+=m.val*k;st.er+=m.er*k}
     else if(it.t==='regen')rgl.push(m.val*k); else if(it.t==='engine')st.sp*=1+(m.val*k+(it.up||0))/100;
     else if(it.t==='cloak')st.cloak=it;
-    else if(it.t==='damper')st.red=Math.min(90,st.red+m.pct[it.tier-1]);
+    else if(it.t==='damper')st.red=Math.min(95,st.red+m.pct[it.tier-1]);
   }
   rgl.sort((a,b)=>b-a);st.rg=rgl.slice(0,10).reduce((a,b)=>a+b,0);
   const sg=skLvl('regen'),se=skLvl('reactor');
   if(sg>0)st.rg+=MT.regen.val*TS[sg-1];
   if(se>0){st.en+=MT.reactor.val*TS[se-1];st.er+=MT.reactor.er*TS[se-1]}
-  st.sh+=SK_SH*skLvl('shield');
+  st.sh+=SK_SH*skLvl('shield');st.red=Math.min(95,st.red+SK_DMP*skLvl('damp'));
   P.st=st; P.shield=Math.min(P.shield,st.sh); P.hull=Math.min(P.hull,st.hu); P.energy=Math.min(P.energy,st.en);
 }
 function fullRepair(){stats();P.shield=P.st.sh;P.hull=P.st.hu;P.energy=P.st.en}
@@ -480,7 +486,7 @@ function newGame(){
   P={x:SYS[0].sx+160,y:SYS[0].sy+160,vx:0,vy:0,z:0,vz:0,ang:-Math.PI/2,cls:0,credits:200,owned:[true,false,false,false,false],home:0,
      slots:[mk('laser'),mk('laser'),mk('shield'),mk('reactor'),null],cargo:[],storage:[mk('armor'),mk('regen')],
      vo:{},vr:'',warp:false,wt:{},hitT:0,flash:0,cloak:0,cloakCd:0,dead:false,docked:-1,shield:1e5,hull:1e5,energy:1e5,st:null,fire:true,full:0};
-  skK={regen:0,reactor:0,shield:0,dmg:0,een:0,range:0};skSel='regen';fullRepair(); score=0;kills=0; BOSS={cd:0,e:null};KB={cd:0,e:null};KA=null; WORLD='main';BH=null;BHcd=0;AB=null;MS=null;alWarned=false;FLR=[];flWarned=false;P.grab=null;document.body.classList.remove('aby'); resetWorld();
+  skK={regen:0,reactor:0,shield:0,dmg:0,een:0,range:0,damp:0};skSel='regen';fullRepair(); score=0;kills=0; BOSS={cd:0,e:null};KB={cd:0,e:null};KA=null; ZR=ZR0;WORLD='main';BH=null;BHcd=0;AB=null;MS=null;alWarned=false;FLR=[];flWarned=false;P.grab=null;document.body.classList.remove('aby'); resetWorld();
 }
 function resetWorld(){E=[];B=[];L=[];PT=[];TX=[];BL=[];RG=[];NEB.forEach((n,i)=>{n.tm=4;for(let c=0;c<3;c++)for(let q=0;q<n.mix[c];q++)nebNpc(i,c,true)});
   SYS.forEach((s,i)=>{if(s.k>1){for(let q=0;q<2;q++)for(let c=0;c<3;c++)for(let n=0;n<MIX[i][c]*(q?2:1);n++)spawnE(i,c,true,q)}else for(let c=0;c<3;c++)for(let n=0;n<MIX[i][c];n++)spawnE(i,c,true);s.tm=4})}
@@ -743,7 +749,7 @@ function makeBH(e){
 function enterAbyss(){
   endWarp();P.grab=null;FLR=[];
   MS={E,L,B,BL,RG,PT,TX,boss:BOSS.e};
-  WORLD='abyss';E=[];L=[];B=[];BL=[];RG=[];PT=[];TX=[];BOSS.e=null;
+  ZR=ZRA;WORLD='abyss';E=[];L=[];B=[];BL=[];RG=[];PT=[];TX=[];BOSS.e=null;
   P.x=ABX;P.y=ABY+ABR*.55;P.vx=P.vy=0;P.z=P.vz=0;P.ang=-Math.PI/2;cam.x=P.x;cam.y=P.y;cam.z=P.z||0;cam.a=P.ang;
   KA=null;AB={wave:0,queue:0,state:'wait',t:4,st:0};
   document.body.classList.add('aby');SH=1;ring(P.x,P.y,400,'#ff3b2f');ring(P.x,P.y,220,'#ffffff');
@@ -751,7 +757,7 @@ function enterAbyss(){
 }
 function leaveAbyss(toHome){
   if(MS){E=MS.E;L=MS.L;B=MS.B;BL=MS.BL;RG=MS.RG;PT=MS.PT;TX=MS.TX;BOSS.e=MS.boss}else{E=[];L=[];B=[];BL=[];RG=[];PT=[];TX=[];BOSS.e=null}
-  MS=null;AB=null;KA=null;WORLD='main';FLR=[];document.body.classList.remove('aby');
+  ZR=ZR0;MS=null;AB=null;KA=null;WORLD='main';FLR=[];document.body.classList.remove('aby');
   const s=SYS[BOSSI];P.x=s.sx+200;P.y=s.sy+200;P.vx=P.vy=0;P.z=P.vz=0;BHcd=8;cam.x=P.x;cam.y=P.y;cam.z=P.z||0;cam.a=P.ang;
   if(!toHome)toast('Du bist zurück in Zenith','#44e07a');
 }
@@ -895,6 +901,10 @@ function playerFire(dt){
 function updP(dt){
   const st=P.st;
   if(P.dead){P.vx*=.97;P.vy*=.97;P.vz=0;P.x+=P.vx*dt;P.y+=P.vy*dt;return}
+  if(LD){const q=planetPos(LD.si),u=Math.min(1,(LD.t+=dt)/LD.T),e=u*u*(3-2*u),R=q.sz*1.04+SHIPS[P.cls].rad,ox=P.x,oy=P.y,d2=Math.max(dt,.001);
+    P.x=q.x+LD.rx+(LD.dx*R-LD.rx)*e;P.y=q.y+LD.ry+(LD.dy*R-LD.ry)*e;P.z=LD.rz+(LD.dz*R-LD.rz)*e;
+    P.vx=(P.x-ox)/d2;P.vy=(P.y-oy)/d2;P.vz=0;P.ang=nA(Math.atan2(q.y-P.y,q.x-P.x));nearSys=-1;
+    if(u>=1)finishLand();return}
   let ix=joy.on?joy.x:0,iy=joy.on?joy.y:0;
   const FR=ctrl==='free'||ctrl==='dual';
   if(!joy.on){if(FR){ix=(keys.d?1:0)-(keys.a?1:0);iy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0)}
@@ -933,7 +943,7 @@ function updP(dt){
   P.energy=Math.min(st.en,P.energy+st.er*dt);
   if(P.cloak>0)P.cloak-=dt; if(P.cloakCd>0)P.cloakCd-=dt;
   playerFire(dt);
-  nearSys=-1;zHint=-1;if(WORLD==='main')SYS.forEach((s,i)=>{if(!s.ns&&Math.hypot(P.x-s.sx,P.y-s.sy)<290){if(Math.abs(P.z)<DOCKZ)nearSys=i;else zHint=i}});
+  nearPl=-1;nearSys=-1;zHint=-1;if(WORLD==='main')for(const i of LYL){const q=planetPos(i);if(Math.hypot(P.x-q.x,P.y-q.y,P.z)<q.sz+40000){nearPl=i;break}}if(WORLD==='main')SYS.forEach((s,i)=>{if(!s.ns&&Math.hypot(P.x-s.sx,P.y-s.sy)<290){if(Math.abs(P.z)<DOCKZ)nearSys=i;else zHint=i}});
 }
 const SPAWN_R=990,WARP_STOP=SPAWN_R*2.5; /* Spawnbereich der Gegner (Radius) und Warp-Abschaltradius = 2,5x */
 function nearSpawn(){
@@ -1040,8 +1050,8 @@ function loadSave(){
     newGame();Object.assign(P,{cls:d.cls,slots:d.slots,cargo:d.cargo,storage:d.storage,credits:d.credits,owned:d.owned,home:SYS[d.home]&&!SYS[d.home].ns?d.home:0});
     while(P.slots.length<SHIPS[P.cls].slots)P.slots.push(null);enforceLimits();
     while(P.owned.length<SHIPS.length)P.owned.push(false);BOSS.cd=d.bcd||0;if(BOSS.cd>0)BH=d.bh&&isFinite(d.bh.x)&&isFinite(d.bh.y)&&Math.hypot(d.bh.x-SYS[BOSSI].x,d.bh.y-SYS[BOSSI].y)<SYS[BOSSI].R+2000?{x:d.bh.x,y:d.bh.y}:bhPos();score=d.score||0;kills=d.kills||0;
-    if(d.sk&&typeof d.sk==='object'){skK={regen:+d.sk.regen||0,reactor:+d.sk.reactor||0,shield:+d.sk.shield||0,dmg:+d.sk.dmg||0,een:+d.sk.een||0,range:+d.sk.range||0};skSel=SK_N[d.ss]?d.ss:'regen'}
-    else{skK={regen:kills,reactor:kills,shield:0,dmg:0,een:0,range:0};skSel='regen'} /* alter Spielstand: beide Skills behalten ihre bisherige Stufe */
+    if(d.sk&&typeof d.sk==='object'){skK={regen:+d.sk.regen||0,reactor:+d.sk.reactor||0,shield:+d.sk.shield||0,dmg:+d.sk.dmg||0,een:+d.sk.een||0,range:+d.sk.range||0,damp:+d.sk.damp||0};skSel=SK_N[d.ss]?d.ss:'regen'}
+    else{skK={regen:kills,reactor:kills,shield:0,dmg:0,een:0,range:0,damp:0};skSel='regen'} /* alter Spielstand: beide Skills behalten ihre bisherige Stufe */
     P.vo=d.vo&&typeof d.vo==='object'?d.vo:{};P.vr=VAR.includes(d.vr)?d.vr:'';uid=d.uid||1000;const s=SYS[P.home];P.x=s.sx+160;P.y=s.sy+160;fullRepair();return true}
   catch(e){return false}
 }
@@ -1081,7 +1091,7 @@ const m4={
     return{m:o,r:[sx,0,sz],u:[ux,uy,uz],f:[fx,fy,fz]}}
 };
 /* M = T * Ry(yaw) * Rx(pitch) * Rz(roll) * S */
-let YO=0;
+let YO=0,OFX=0,OFZ=0;
 function model(x,y,z,yaw,pitch,roll,sx,sy,sz){
   const cy=Math.cos(yaw),sy_=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch),cr=Math.cos(roll),sr=Math.sin(roll);
   const a00=cr,a01=-sr,a02=0,a10=cp*sr,a11=cp*cr,a12=-sp,a20=sp*sr,a21=sp*cr,a22=cp;
@@ -1089,7 +1099,7 @@ function model(x,y,z,yaw,pitch,roll,sx,sy,sz){
   o[0]=(cy*a00+sy_*a20)*sx;o[1]=a10*sx;o[2]=(-sy_*a00+cy*a20)*sx;
   o[4]=(cy*a01+sy_*a21)*sy;o[5]=a11*sy;o[6]=(-sy_*a01+cy*a21)*sy;
   o[8]=(cy*a02+sy_*a22)*sz;o[9]=a12*sz;o[10]=(-sy_*a02+cy*a22)*sz;
-  o[12]=x;o[13]=y+YO;o[14]=z;o[15]=1;return o;
+  o[12]=x-OFX;o[13]=y+YO;o[14]=z-OFZ;o[15]=1;return o;
 }
 const ID4=model(0,0,0,0,0,0,1,1,1);
 
@@ -1104,14 +1114,14 @@ function prog(vs,fs,attrs){
 }
 const LP=prog(
  'attribute vec3 aP;attribute vec3 aN;attribute vec4 aC;uniform mat4 uVP;uniform mat4 uM;uniform vec3 uCam;varying vec3 vN;varying vec4 vC;varying vec3 vE;varying vec3 vO;varying vec3 vNo;void main(){vec4 w=uM*vec4(aP,1.);vN=(uM*vec4(aN,0.)).xyz;vC=aC;vE=uCam-w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;}',
- 'precision mediump float;varying vec3 vN;varying vec4 vC;varying vec3 vE;varying vec3 vO;varying vec3 vNo;uniform sampler2D uRu;uniform float uTx;uniform vec3 uL;uniform vec3 uTint;uniform vec3 uAmb;uniform float uFl;uniform float uA;uniform float uEm;void main(){vec3 n=normalize(vN);float d=max(dot(n,uL),0.);float rim=pow(1.-max(dot(n,normalize(vE)),0.),2.5);vec3 base=vC.rgb*uTint;if(uTx>.5){vec3 w=pow(abs(normalize(vNo)),vec3(4.));w/=(w.x+w.y+w.z);vec3 tx=texture2D(uRu,vO.zy*.5).rgb*w.x+texture2D(uRu,vO.xz*.5).rgb*w.y+texture2D(uRu,vO.xy*.5).rgb*w.z;float k=clamp(dot(vC.rgb,vec3(.3,.59,.11))/.385,.55,1.5);base=mix(base,tx*k*uTint,1.-step(.5,vC.a));}vec3 lit=base*(uAmb+vec3(1.,.97,.92)*d*.95)+base*rim*.3+vec3(.2,.35,.55)*rim*.1;vec3 c=mix(lit,base*1.2,clamp(vC.a+uEm,0.,1.));c=mix(c,vec3(1.),uFl);gl_FragColor=vec4(c,uA);}',
+ '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nvarying vec3 vN;varying vec4 vC;varying vec3 vE;varying vec3 vO;varying vec3 vNo;uniform sampler2D uRu;uniform float uTx;uniform vec3 uL;uniform vec3 uTint;uniform vec3 uAmb;uniform float uFl;uniform float uA;uniform float uEm;uniform float uPl;void main(){vec3 n=normalize(vN);float d=max(dot(n,uL),0.);float rim=pow(1.-max(dot(n,normalize(vE)),0.),2.5);vec3 base=vC.rgb*uTint;if(uTx>.5){vec3 w=pow(abs(normalize(vNo)),vec3(4.));w/=(w.x+w.y+w.z);vec3 tx=texture2D(uRu,vO.zy*.5).rgb*w.x+texture2D(uRu,vO.xz*.5).rgb*w.y+texture2D(uRu,vO.xy*.5).rgb*w.z;float k=clamp(dot(vC.rgb,vec3(.3,.59,.11))/.385,.55,1.5);base=mix(base,tx*k*uTint,1.-step(.5,vC.a));}if(uPl>.5){vec3 pp=normalize(vO);vec2 uv=vec2(atan(pp.z,pp.x)*.15915494+.5,asin(clamp(pp.y,-1.,1.))*.31830989+.5);base=texture2D(uRu,uv).rgb*uTint;}vec3 lit=base*(uAmb+vec3(1.,.97,.92)*d*.95)+base*rim*.3+vec3(.2,.35,.55)*rim*.1;vec3 c=mix(lit,base*1.2,clamp(vC.a+uEm,0.,1.));c=mix(c,vec3(1.),uFl);gl_FragColor=vec4(c,uA);}',
  ['aP','aN','aC']);
 const SP=prog(
  'attribute vec3 aP;attribute vec2 aU;attribute vec4 aC;uniform mat4 uVP;varying vec2 vU;varying vec4 vC;void main(){vU=aU;vC=aC;gl_Position=uVP*vec4(aP,1.);}',
  '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nvarying vec2 vU;varying vec4 vC;uniform sampler2D uT;void main(){vec4 t=texture2D(uT,vU);gl_FragColor=vec4(t.rgb*vC.rgb,t.a*vC.a);}',
  ['aP','aU','aC']);
 const TP2=prog(
- 'attribute vec4 aS;uniform mat4 uVP;uniform vec2 uCam;uniform float uTile;uniform float uPx;uniform float uAby;uniform float uCz;varying vec3 vC;void main(){float L=aS.z;float y=-400.-L*1300.+uCz*(.55-L*.2);vec2 rel=mod(aS.xy*uTile-uCam+uTile*.5,uTile)-uTile*.5;gl_Position=uVP*vec4(uCam.x+rel.x,y,uCam.y+rel.y,1.);gl_PointSize=uPx*(3.4-L*.8);vec3 c=aS.w<.5?vec3(.8,.9,1.):aS.w<1.5?vec3(1.,.89,.67):aS.w<2.5?vec3(.67,.78,1.):vec3(1.,.75,.84);c=mix(c,vec3(1.,.45,.4),uAby);vC=c*(1.-L*.2);}',
+ 'attribute vec4 aS;uniform mat4 uVP;uniform vec2 uCam;uniform float uTile;uniform float uPx;uniform float uAby;uniform float uCz;varying vec3 vC;void main(){float L=aS.z;float y=-400.-L*1300.+uCz*(.55-L*.2);vec2 rel=mod(aS.xy*uTile-uCam+uTile*.5,uTile)-uTile*.5;gl_Position=uVP*vec4(rel.x,y,rel.y,1.);gl_PointSize=uPx*(3.4-L*.8);vec3 c=aS.w<.5?vec3(.8,.9,1.):aS.w<1.5?vec3(1.,.89,.67):aS.w<2.5?vec3(.67,.78,1.):vec3(1.,.75,.84);c=mix(c,vec3(1.,.45,.4),uAby);vC=c*(1.-L*.2);}',
  'precision mediump float;varying vec3 vC;void main(){float a=smoothstep(.5,.12,length(gl_PointCoord-.5));gl_FragColor=vec4(vC,a);}',
  ['aS']);
 
@@ -1297,7 +1307,7 @@ const ENG=cls=>cls===4?[[-.3,1.4,1],[.3,1.4,1],[-.92,1.02,.8],[.92,1.02,.8]]:(cl
 /* --- Dynamische Puffer: Lit (Tentakel) und Sprites (alles Leuchtende) --- */
 const DL={a:new Float32Array(10*60000),n:0,b:gl.createBuffer()};
 function dlv(p,n,c,e){if((DL.n+1)*10>DL.a.length){const o=new Float32Array(DL.a.length*2);o.set(DL.a);DL.a=o}
-  const a=DL.a,i=DL.n*10;a[i]=p[0];a[i+1]=p[1]+YO;a[i+2]=p[2];a[i+3]=n[0];a[i+4]=n[1];a[i+5]=n[2];a[i+6]=c[0];a[i+7]=c[1];a[i+8]=c[2];a[i+9]=e||0;DL.n++}
+  const a=DL.a,i=DL.n*10;a[i]=p[0]-OFX;a[i+1]=p[1]+YO;a[i+2]=p[2]-OFZ;a[i+3]=n[0];a[i+4]=n[1];a[i+5]=n[2];a[i+6]=c[0];a[i+7]=c[1];a[i+8]=c[2];a[i+9]=e||0;DL.n++}
 function tube(x0,y0,z0,x1,y1,z1,r0,r1,col,em){
   let dx=x1-x0,dy=y1-y0,dz=z1-z0;const l=Math.hypot(dx,dy,dz);if(l<1e-4)return;dx/=l;dy/=l;dz/=l;
   let ux=-dz,uz=dx,ul=Math.hypot(ux,uz);if(ul<1e-3){ux=1;uz=0;ul=1}ux/=ul;uz/=ul;
@@ -1309,7 +1319,7 @@ function tube(x0,y0,z0,x1,y1,z1,r0,r1,col,em){
 }
 const DS={a:new Float32Array(9*40000),n:0,b:gl.createBuffer()};
 function sv(x,y,z,u,v,r,g,b,a){if((DS.n+1)*9>DS.a.length){const o=new Float32Array(DS.a.length*2);o.set(DS.a);DS.a=o}
-  const q=DS.a,i=DS.n*9;q[i]=x;q[i+1]=y+YO;q[i+2]=z;q[i+3]=u;q[i+4]=v;q[i+5]=r;q[i+6]=g;q[i+7]=b;q[i+8]=a;DS.n++}
+  const q=DS.a,i=DS.n*9;q[i]=x-OFX;q[i+1]=y+YO;q[i+2]=z-OFZ;q[i+3]=u;q[i+4]=v;q[i+5]=r;q[i+6]=g;q[i+7]=b;q[i+8]=a;DS.n++}
 const CELL={glow:0,ring:1,beam:2,white:3};
 function quadS(cell,p0,p1,p2,p3,c,a){const u0=cell*.25+.004,u1=cell*.25+.246,v0=.02,v1=.98,r=c[0],g=c[1],b=c[2];
   sv(p0[0],p0[1],p0[2],u0,v0,r,g,b,a);sv(p1[0],p1[1],p1[2],u1,v0,r,g,b,a);sv(p2[0],p2[1],p2[2],u1,v1,r,g,b,a);
@@ -1345,11 +1355,11 @@ const W3=[1,1,1],LDEF=(()=>{const l=[-.35,.85,.4],n=Math.hypot(l[0],l[1],l[2]);r
 const HC={};const hc=s=>HC[s]||(HC[s]=s.length===4?hf('#'+s[1]+s[1]+s[2]+s[2]+s[3]+s[3]):hf(s));
 function setCam(){
   const k=1/Z,sx=SH>0?rnd(-1,1)*SH*12:0,sz=SH>0?rnd(-1,1)*SH*12:0;
-  camCA=Math.cos(cam.a);camSA=Math.sin(cam.a);const pit=(ctrl==='free'||ctrl==='dual')?camPitch:PITCH0,cpi=Math.cos(pit)*CAMD*k;EYE=[cam.x+sx-camCA*cpi,cam.z+Math.sin(pit)*CAMD*k,cam.y+sz-camSA*cpi];const lk=m4.look(EYE,[cam.x+sx,cam.z,cam.y+sz]);
+  camCA=Math.cos(cam.a);camSA=Math.sin(cam.a);const pit=(ctrl==='free'||ctrl==='dual')?camPitch:PITCH0,cpi=Math.cos(pit)*CAMD*k;OFX=cam.x;OFZ=cam.y;EYE=[sx-camCA*cpi,cam.z+Math.sin(pit)*CAMD*k,sz-camSA*cpi];const lk=m4.look(EYE,[sx,cam.z,sz]);
   CAMR=lk.r;CAMU=lk.u;CAMF=lk.f;VP=m4.mul(m4.persp(.8,cw/ch,100,3000000),lk.m);
 }
 const vis=(x,z,r,y)=>{const k=1/Z,dh=cam.z-(y||0);if((ctrl==='free'||ctrl==='dual')&&Math.abs(camPitch-PITCH0)>.03)return Math.hypot(x-cam.x,z-cam.y)<3400*k+r;if(dh<-400*k)return false;const f=Math.max(.75,1+dh/(CAMUP*k))*k,sh=Math.max(0,dh)*(CAMBK/CAMUP)*k,dx=x-cam.x,dz=z-cam.y,u=dx*camCA+dz*camSA,w=-dx*camSA+dz*camCA;return Math.abs(w)<1800*f+r&&u<sh+1500*f+r&&u>sh-520*f-r};
-function proj(x,y,z){const m=VP,w=m[3]*x+m[7]*y+m[11]*z+m[15];if(w<=1)return null;return[((m[0]*x+m[4]*y+m[8]*z+m[12])/w*.5+.5)*cw,(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/w*.5+.5))*ch,w]}
+function proj(x,y,z){x-=OFX;z-=OFZ;const m=VP,w=m[3]*x+m[7]*y+m[11]*z+m[15];if(w<=1)return null;return[((m[0]*x+m[4]*y+m[8]*z+m[12])/w*.5+.5)*cw,(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/w*.5+.5))*ch,w]}
 const ppu=w=>(ch*.5)/(Math.tan(.4)*w);
 function ptrs(stride,spec){gl.bindBuffer(gl.ARRAY_BUFFER,spec.b);for(const [i,n,o] of spec.a)gl.vertexAttribPointer(i,n,gl.FLOAT,false,stride,o)}
 function setLit(){gl.useProgram(LP.p);gl.uniformMatrix4fv(LP.u.uVP,false,VP);gl.uniform3f(LP.u.uCam,EYE[0],EYE[1],EYE[2]);
@@ -1359,14 +1369,14 @@ function drawMesh(m,M,tint,fl,al,em,L){
   litPtr(m.b);gl.uniformMatrix4fv(LP.u.uM,false,M);const t=tint||W3,l=L||LDEF;
   gl.uniform3f(LP.u.uTint,t[0],t[1],t[2]);gl.uniform1f(LP.u.uFl,fl||0);gl.uniform1f(LP.u.uEm,em||0);gl.uniform3f(LP.u.uL,l[0],l[1],l[2]);
   const a=al===undefined?1:al;gl.uniform1f(LP.u.uA,a);
-  if(m.tx&&RUST.ready){gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,RUST.tex);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(LP.u.uRu,1);gl.uniform1f(LP.u.uTx,1)}else gl.uniform1f(LP.u.uTx,0);
+  if(m.tx&&RUST.ready){gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,RUST.tex);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(LP.u.uRu,1);gl.uniform1f(LP.u.uTx,1)}else gl.uniform1f(LP.u.uTx,0);gl.uniform1f(LP.u.uPl,m.pl&&PLT.ready?1:0);if(m.pl&&PLT.ready){gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,PLT.tex);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(LP.u.uRu,1)}
   if(a<1){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false)}
   gl.drawArrays(gl.TRIANGLES,0,m.n);
   if(a<1){gl.disable(gl.BLEND);gl.depthMask(true)}
 }
 function flushLit(){
   if(!DL.n)return;litPtr(DL.b);gl.bufferData(gl.ARRAY_BUFFER,DL.a.subarray(0,DL.n*10),gl.STREAM_DRAW);
-  gl.uniformMatrix4fv(LP.u.uM,false,ID4);gl.uniform3f(LP.u.uTint,1,1,1);gl.uniform1f(LP.u.uFl,0);gl.uniform1f(LP.u.uA,1);gl.uniform1f(LP.u.uEm,0);gl.uniform1f(LP.u.uTx,0);gl.uniform3f(LP.u.uL,LDEF[0],LDEF[1],LDEF[2]);
+  gl.uniformMatrix4fv(LP.u.uM,false,ID4);gl.uniform3f(LP.u.uTint,1,1,1);gl.uniform1f(LP.u.uFl,0);gl.uniform1f(LP.u.uA,1);gl.uniform1f(LP.u.uEm,0);gl.uniform1f(LP.u.uTx,0);gl.uniform1f(LP.u.uPl,0);gl.uniform3f(LP.u.uL,LDEF[0],LDEF[1],LDEF[2]);
   gl.drawArrays(gl.TRIANGLES,0,DL.n);DL.n=0}
 function flushSpr(tex){
   if(!DS.n)return;gl.useProgram(SP.p);gl.uniformMatrix4fv(SP.u.uVP,false,VP);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1i(SP.u.uT,0);
@@ -1418,6 +1428,39 @@ function skyGen(){
   setTimeout(step,0);
 }
 skyGen();
+/* Realistischer Planet (LYRA I): Textur wird einmalig prozedural berechnet, funktioniert auch offline.
+   Berechnet auf der Kugel (3D-Rauschen), deshalb keine Nähte. Kontinente, Ozeane, Eiskappen, Wolken. */
+const PLM={b:SPH.b,n:SPH.n,pl:1},PLT={tex:null,ready:false};
+function plGen(){
+  const TW=1024,TH=512,c=document.createElement('canvas');c.width=TW;c.height=TH;
+  const g=c.getContext('2d'),im=g.createImageData(TW,TH),d=im.data;let row=0;
+  const sm=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)},mx=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+  const DEEP=[6,28,84],SHAL=[44,138,178],SAND=[212,196,150],DES=[198,170,112],GRN=[56,112,50],ROCK=[112,100,88],SNOW=[240,244,248],WH=[252,252,252];
+  const step=()=>{
+    for(let n=0;n<8&&row<TH;n++,row++){
+      const lat=(row/TH-.5)*Math.PI,cl=Math.cos(lat),y=Math.sin(lat);
+      for(let x=0;x<TW;x++){
+        const lon=(x/TW-.5)*TAU,px=cl*Math.cos(lon),pz=cl*Math.sin(lon);
+        const e=skyF(px*2.3+3.7,y*2.3+1.2,pz*2.3+8.4,5),m=skyF(px*1.8+30,y*1.8+14,pz*1.8+6,3),dt=skyF(px*16+5,y*16+9,pz*16+2,2);
+        let col;
+        if(e<.5){col=mx(SHAL,DEEP,clamp((.5-e)/.2,0,1));if(Math.abs(y)>.86+(e-.5)*.4)col=mx(col,SNOW,sm(.86,.93,Math.abs(y)))}
+        else{
+          const h=(e-.5)/.3,low=mx(DES,GRN,sm(.35,.65,m-Math.abs(y)*.18));
+          col=mx(low,ROCK,sm(.35,.85,h));
+          if(h<.07)col=mx(SAND,col,h/.07);
+          col=mx(col,SNOW,Math.max(sm(.85,1.15,h),sm(.74,.88,Math.abs(y)+(e-.5)*.3)));
+        }
+        const k=.88+dt*.24,cv=skyF(px*3.2+20,y*5.2+9,pz*3.2+4,5),ca=sm(.5,.74,cv)*.88,i=(row*TW+x)*4;
+        col=mx([col[0]*k,col[1]*k,col[2]*k],WH,ca);
+        d[i]=col[0];d[i+1]=col[1];d[i+2]=col[2];d[i+3]=255;
+      }
+    }
+    if(row<TH){setTimeout(step,0);return}
+    g.putImageData(im,0,0);PLT.tex=mkTex(c,true);PLT.ready=true;
+  };
+  setTimeout(step,0);
+}
+setTimeout(plGen,1500);
 function drawSkyCube(aby){
   if(!SKY.ready)return;
   const pal=aby?SKY_AB:SKY_MN;
@@ -1511,8 +1554,8 @@ function sysDraw(s){
   const sc=hf(s.col);
   drawMesh(SPH,model(s.x,0,s.y,tmr*.05,0,0,34*s.k,34*s.k,34*s.k),[1,.97,.9],0,1,1);
   for(const p of s.pl){const a=p.o+tmr*p.sp,px=s.x+Math.cos(a)*p.r,pz=s.y+Math.sin(a)*p.r,L=[s.x-px,60*s.k,s.y-pz],ln=Math.hypot(L[0],L[1],L[2]),col=hslc(p.hue,.55,.55);
-    drawMesh(SPH,model(px,0,pz,tmr*.2+p.o,.3,0,p.sz,p.sz,p.sz),col,0,1,0,[L[0]/ln,L[1]/ln,L[2]/ln]);
-    bill(CELL.glow,px,0,pz,p.sz*1.7,col,.22);
+    const pt=s.nr&&PLT.ready;drawMesh(pt?PLM:SPH,model(px,0,pz,tmr*(pt?.04:.2)+p.o,.3,0,p.sz,p.sz,p.sz),pt?[1,1,1]:col,0,1,0,[L[0]/ln,L[1]/ln,L[2]/ln]);
+    bill(CELL.glow,px,0,pz,p.sz*1.7,pt?[.4,.65,1]:col,.22);
     circ(s.x,s.y,p.r,.5,s.k>1?2*s.k/6:2,[.47,.67,.78],.16,0)}
   bill(CELL.glow,s.x,6,s.y,300*s.k,sc,.9);bill(CELL.glow,s.x,8,s.y,130*s.k,[1,.97,.9],.9);bill(CELL.glow,s.x,2,s.y,700*s.k,sc,.2);
   circ(s.x,s.y,s.R,1,s.k>1?5*s.k/4:5,sc,.33,s.k>1?34*s.k/4:34,true);
@@ -1546,7 +1589,7 @@ function abyssBack(){
 }
 function abyssFront(){
   const pu=.55+.25*Math.sin(tmr*2.2);
-  drawMesh(ANNULUS,ID4,[.016,0,.008],0,.92,1);
+  drawMesh(ANNULUS,model(0,0,0,0,0,0,1,1,1),[.016,0,.008],0,.92,1);
   circ(ABX,ABY,ABR-30,1,70,[1,.2,.16],.16,0);circ(ABX,ABY,ABR,2,8,[1,.2,.16],pu,0);
   const n=96;for(let i=0;i<n;i++){const t0=i/n*TAU,t1=(i+1)/n*TAU,R=ABR,b=[1,.2,.16,.4*pu],tp=[1,.2,.16,0];
     const p=(t,y)=>[ABX+Math.cos(t)*R,y,ABY+Math.sin(t)*R];if(!vis(p(t0,0)[0],p(t0,0)[2],200))continue;
@@ -1690,6 +1733,7 @@ function drawOverlay(){
     for(const n of NEB)if(vis(n.x,n.y,n.r+300))lab(n.name+' · '+n.diff,n.x,400,n.y,24,n.lc);
     SYS.forEach((s,i)=>{if(vis(s.x,s.y,s.R+320))lab(s.name+' · STUFE '+s.lv+(tagOf(s)?' · '+tagOf(s):''),s.x+camCA*(s.k>1?34*s.k+300:SR0+14),0,s.y+camSA*(s.k>1?34*s.k+300:SR0+14),22,s.col);
       if(!s.ns&&vis(s.sx,s.sy,340)){const near=nearSys===i;lab('STATION '+s.name,s.sx+camCA*215,24,s.sy+camSA*215,24,near?'#44e07a':'#38d9ff');if(near)lab('Andocken möglich',s.sx+camCA*170,24,s.sy+camSA*170,16,'#44e07a');else if(zHint===i)lab(P.z>0?'Höhe anpassen: nach unten fliegen':'Höhe anpassen: nach oben fliegen',s.sx+camCA*140,24,s.sy+camSA*140,16,'#ffb347')}});
+    for(const i of LYL){const q=planetPos(i);if(vis(q.x,q.y,q.sz+300)){lab('PLANET '+SYS[i].name+' I',q.x,q.sz+80,q.y,20,'#8affc8');if(nearPl===i)lab('Landen möglich',q.x,q.sz+30,q.y,16,'#44e07a')}}
     if(BH&&vis(BH.x,BH.y,200))lab('SCHWARZES LOCH',BH.x+camCA*110,30,BH.y+camSA*110,18,'#d9a8ff');
     for(const f of FLR){if(f.age>=f.warn||!vis(SYS[f.si].x,SYS[f.si].y,SYS[f.si].R+320))continue;const s=SYS[f.si],p=.5+.5*Math.sin(tmr*14);
       lab('SONNENERUPTION',s.x+Math.cos(f.a)*f.L*.88,10,s.y+Math.sin(f.a)*f.L*.88,15,'#ffaa50',.6+.35*p)}
@@ -1781,7 +1825,7 @@ function updHUD(){
   $('status').innerHTML='X <b>'+Math.round(P.x/10)+'</b> Y <b>'+Math.round(P.y/10)+'</b> Z <b>'+Math.round(P.z/10)+'</b> · FEINDE <b>'+sn+'</b> · SCORE <b>'+fmt(score)+'</b>';
   if(WORLD==='abyss'&&AB)$('status').innerHTML='Z <b>'+Math.round(P.z/10)+'</b> · WELLE <b>'+AB.wave+'</b>/100 · FEINDE <b>'+(E.length+Math.max(0,AB.queue))+'</b> · SCORE <b>'+fmt(score)+'</b>';
   $('zdot').style.top=(50-P.z/ZR*50)+'%';
-  $('bdock').hidden=!(mode==='play'&&nearSys>=0&&!P.dead&&!P.grab&&!P.warp);
+  $('bdock').hidden=!(mode==='play'&&nearSys>=0&&!P.dead&&!P.grab&&!P.warp);$('bland').hidden=!(mode==='play'&&nearPl>=0&&!P.dead&&!P.grab);
   const bc=$('bcloak');bc.hidden=!st.cloak;
   if(st.cloak){bc.classList.toggle('cd',P.cloak<=0&&P.cloakCd>0);bc.classList.toggle('on',P.cloak>0);
     bc.innerHTML=P.cloak>0?'TARNUNG<br>'+Math.ceil(P.cloak)+'s':P.cloakCd>0?'TARNUNG<br>'+Math.ceil(P.cloakCd)+'s':'TARNUNG'}
@@ -1862,7 +1906,7 @@ function autoFit(){
   let ds=P.slots.reduce((a,i)=>a+(i&&i.t==='damper'?MT.damper.pct[i.tier-1]:0),0);
   const cnt={};P.slots.forEach(i=>{if(i)cnt[i.t]=(cnt[i.t]||0)+1});
   for(const it of pool){const k=P.slots.indexOf(null);if(k<0)break;
-    if((cnt[it.t]||0)>=LIM(it.t))continue;if(it.t==='damper'&&ds>=90)continue;
+    if((cnt[it.t]||0)>=LIM(it.t))continue;if(it.t==='damper'&&ds>=95)continue;
     take(it.id);P.slots[k]=it;if(it.t==='damper')ds+=MT.damper.pct[it.tier-1];cnt[it.t]=(cnt[it.t]||0)+1}
   stats();
 }
@@ -1909,6 +1953,22 @@ function setMap(on){
   else if(!on&&mode==='map'){mode='play';$('map').hidden=true}
 }
 function tryDock(){if(mode==='play'&&nearSys>=0&&!P.dead){if(P.warp){toast('Warp zuerst ausschalten','#ff4d4d');return}if(P.grab){toast('Du wirst festgehalten','#ff4d4d');return}P.z=P.vz=0;openStation(nearSys)}}
+function tryLand(){
+  if(mode!=='play'||nearPl<0||P.dead||P.grab)return;
+  const q=planetPos(nearPl),rx=P.x-q.x,ry=P.y-q.y,rz=P.z,l=Math.hypot(rx,ry,rz)||1,dist=Math.max(0,l-q.sz*1.04);
+  endWarp();joy.on=false;$('stick').hidden=true;P.cloak=0;
+  LD={si:nearPl,t:0,T:clamp(dist/1400+1.5,2,7),rx,ry,rz,dx:rx/l,dy:ry/l,dz:rz/l};mode='landing';
+  toast('Landeanflug … (Esc zum Abbrechen)','#44e07a');
+}
+function finishLand(){
+  LDX={si:LD.si,dx:LD.dx,dy:LD.dy,dz:LD.dz};$('landname').textContent=SYS[LD.si].name+' I';LD=null;P.vx=P.vy=P.vz=0;mode='land';fullRepair();save();
+  $('land').hidden=false;$('hud').hidden=true;
+}
+function closeLand(){
+  if(mode!=='land')return;
+  if(LDX){const q=planetPos(LDX.si),R=q.sz*1.04+600;P.x=q.x+LDX.dx*R;P.y=q.y+LDX.dy*R;P.z=clamp(LDX.dz*R,-ZR+50,ZR-50)}
+  $('land').hidden=true;$('hud').hidden=false;P.hitT=0;mode='play'
+}
 function renderSkills(){
   const rg=l=>'+'+(MT.regen.val*TS[l-1]).toFixed(1).replace('.',',')+' Schild pro Sekunde, im Kampf die Hälfte';
   const rc=l=>'+'+Math.round(MT.reactor.val*TS[l-1])+' Energie, +'+(MT.reactor.er*TS[l-1]).toFixed(1).replace('.',',')+'/s';
@@ -1916,12 +1976,12 @@ function renderSkills(){
   const dm=l=>'+'+(SK_DMG*l)+' % Schaden für alle Waffen';
   const en=l=>'-'+(SK_EN*l)+' % Energieverbrauch aller Waffen';
   const ra=l=>'+'+(SK_RANGE*l)+' % Reichweite für alle Waffen';
-  const defs=[{t:'regen',f:rg},{t:'reactor',f:rc},{t:'shield',f:sh},{t:'dmg',f:dm},{t:'een',f:en},{t:'range',f:ra}];
+  const dp=l=>'-'+(SK_DMP*l)+' % Schaden auf Schild und Struktur';const defs=[{t:'regen',f:rg},{t:'reactor',f:rc},{t:'shield',f:sh},{t:'dmg',f:dm},{t:'een',f:en},{t:'range',f:ra},{t:'damp',f:dp}];
   $('skl').innerHTML=defs.map(d=>{
     const l=skLvl(d.t),n=skK[d.t],nx=SK_T[l],on=skSel===d.t,col=CATC[d.t]||'#ff5a4a',
       cur=l?d.f(l):'Noch nicht freigeschaltet',
       nxt=nx!==undefined?'Stufe '+(l+1)+': '+d.f(l+1)+' · noch '+(nx-n)+' Abschüsse':'Höchste Stufe erreicht';
-    return '<div class="sk"><div class="badge" style="color:'+col+';border-color:'+col+'">'+(MT[d.t]?MT[d.t].ic:d.t==='een'?'V':d.t==='range'?'R':'W')+'</div><div class="info"><div class="nm">'+SK_N[d.t]+'<em>STUFE '+l+' / 4</em></div>'
+    return '<div class="sk"><div class="badge" style="color:'+col+';border-color:'+col+'">'+(MT[d.t]?MT[d.t].ic:d.t==='een'?'V':d.t==='range'?'R':d.t==='damp'?'D':'W')+'</div><div class="info"><div class="nm">'+SK_N[d.t]+'<em>STUFE '+l+' / 4</em></div>'
       +'<div class="cur">'+cur+'</div><div class="ds">'+nxt+'</div>'
       +'<div class="pips">'+[1,2,3,4].map(i=>'<i'+(i<=l?' class="on"':'')+'></i>').join('')+'</div></div>'
       +'<button class="b sm'+(on?' pri':'')+'" data-sk="'+d.t+'" aria-pressed="'+on+'">'+(on?'ZÄHLT':'WÄHLEN')+'</button></div>';
@@ -1948,7 +2008,7 @@ function setSettings(on){
   else if(!on&&mode==='settings'){mode='play';$('settings').hidden=true}
 }
 let skShown='';
-function updSkBtn(){const a=skLvl('regen'),b=skLvl('reactor'),c=skLvl('shield'),d=skLvl('dmg'),f=skLvl('een'),sig=a+'/'+b+'/'+c+'/'+d+'/'+f;if(sig!==skShown){skShown=sig;$('bskill').textContent=a||b||c||d||f?'SKILLS · G'+a+' E'+b+' S'+c+' D'+d+' V'+f:'SKILLS'}}
+function updSkBtn(){const a=skLvl('regen'),b=skLvl('reactor'),c=skLvl('shield'),d=skLvl('dmg'),f=skLvl('een'),g=skLvl('damp'),sig=a+'/'+b+'/'+c+'/'+d+'/'+f+'/'+g;if(sig!==skShown){skShown=sig;$('bskill').textContent=a||b||c||d||f||g?'SKILLS · G'+a+' E'+b+' S'+c+' D'+d+' V'+f+' M'+g:'SKILLS'}}
 function toggleFire(){if(mode==='play')P.fire=!P.fire}
 /* ---------- Login (Supabase) ----------
    Der 4-stellige Code ist ID und Passwort in einem. Die Tabelle "spieler" ist per RLS gesperrt,
@@ -2117,13 +2177,13 @@ window.addEventListener('keydown',e=>{
   if(e.target&&e.target.id==='code')return; /* Tippen im Login-Feld löst keine Spieltasten aus */
   const k=e.key.toLowerCase();if(ctrl==='dual'&&k==='arrowup'){dualThrottle=.5;$('bup').classList.add('on');$('bdn').classList.remove('on')}else if(ctrl==='dual'&&k==='arrowdown'){dualThrottle=1;$('bdn').classList.add('on');$('bup').classList.remove('on')}keys[k]=true;
   if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
-  if(k==='e')tryDock();else if(k==='f')toggleFire();else if(k==='c')useCloak();else if(k==='b')useWarp();
+  if(k==='e'){tryDock();tryLand()}else if(k==='f')toggleFire();else if(k==='c')useCloak();else if(k==='b')useWarp();
   else if(k==='m')setMap(mode!=='map');
   else if(k==='k')setSkills(mode!=='skills');
   else if(k==='n')toggleSound();
   else if(k==='o')setSettings(mode!=='settings');
   else if(k==='p')setPause(mode!=='pause');
-  else if(k==='0')zoomTo(1);else if(k==='escape'){if(mode==='settings')setSettings(false);else if(mode==='skills')setSkills(false);else if(mode==='map')setMap(false);else if(mode==='dock')closeStation();else setPause(mode!=='pause')}
+  else if(k==='0')zoomTo(1);else if(k==='escape'){if(mode==='settings')setSettings(false);else if(mode==='skills')setSkills(false);else if(mode==='map')setMap(false);else if(mode==='landing'){LD=null;mode='play'}else if(mode==='land')closeLand();else if(mode==='dock')closeStation();else setPause(mode!=='pause')}
 });
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
 window.addEventListener('blur',()=>{camP.on=false;camStickY=0;zIn=zOut=false;$('bzi').classList.remove('on');$('bzo').classList.remove('on');zUp=zDn=false;$('bup').classList.remove('on');$('bdn').classList.remove('on');for(const k in keys)keys[k]=false;joy.on=false;stickEl.hidden=true});
@@ -2134,7 +2194,7 @@ $('bcloak').onclick=useCloak;$('bwarp').onclick=useWarp;$('bdock').onclick=tryDo
 $('bnew').onclick=()=>{if(hasSave()){$('newconfirm').hidden=false;$('bnewyes').focus()}else start(false)};
 $('bnewyes').onclick=()=>{try{localStorage.removeItem(SAVE)}catch(e){}$('newconfirm').hidden=true;start(false)};
 $('bnewno').onclick=()=>{$('newconfirm').hidden=true};
-$('bcont').onclick=()=>start(true);$('bundock').onclick=closeStation;$('brespawn').onclick=respawn;
+$('bcont').onclick=()=>start(true);$('bundock').onclick=closeStation;$('bland').onclick=tryLand;$('bliftoff').onclick=closeLand;$('brespawn').onclick=respawn;
 $('tabs').onclick=e=>{const t=e.target.closest('.tab');if(t){tab=t.dataset.tab;yardSel=-1;$('stbody').scrollTop=0;renderStation()}};
 $('stbody').onclick=e=>{const b=e.target.closest('[data-a]');if(b&&!b.disabled)stAction(b.dataset.a,b.dataset)};
 function bindZ(id,dir){const b=$(id);
@@ -2154,7 +2214,7 @@ window.addEventListener('resize',resize);
 let last=0,hacc=0;
 function frame(t){
   const dt=Math.min(.05,(t-last)/1000||0);last=t;
-  if(mode==='play'||mode==='dead')updWorld(dt);else if(mode==='title')tmr+=dt;
+  if(mode==='play'||mode==='dead'||mode==='landing')updWorld(dt);else if(mode==='title')tmr+=dt;
   rtStep(dt);if(user)rtTx(false);
   if(cv.clientWidth!==cw||cv.clientHeight!==ch)resize();
   const f=Math.min(1,dt*7);{const fw=P&&P.warp?1:f;cam.x+=(P.x-cam.x)*fw;cam.y+=(P.y-cam.y)*fw}{const zi=(zIn||keys['+']||keys['=']?1:0)-(zOut||keys['-']||keys['_']?1:0);if(zi)zoomTo(ZUt*Math.exp(zi*dt*1.1));if(Math.abs(ZUt-ZU)>.0004){ZU+=(ZUt-ZU)*Math.min(1,dt*10);Z=Zb*ZU}}
