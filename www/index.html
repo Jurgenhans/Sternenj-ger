@@ -855,7 +855,7 @@ function updP(dt){
     else{ix=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);iy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0)}
     const m=Math.hypot(ix,iy);if(m>1){ix/=m;iy/=m}}
   if(P.warp&&(P.grab||WORLD!=='main'))endWarp();
-  if(P.warp&&nearSpawn()){endWarp();toast('Warp beendet: Gegnerzone voraus','#ff6a5e')}
+  {const nz=P.warp&&nearSpawn();if(nz){endWarp();toast(nz==='s'?'Warp beendet: Station voraus':'Warp beendet: Gegnerzone voraus',nz==='s'?'#44e07a':'#ff6a5e')}}
   const WM=P.warp?(inNeb()?10:100):1;
   let spm=1;
   if(P.grab){const g=P.grab;if(g.dead||g.ts!=='h'||WORLD!=='main'){P.grab=null}
@@ -885,7 +885,7 @@ function updP(dt){
   nearSys=-1;zHint=-1;if(WORLD==='main')SYS.forEach((s,i)=>{if(!s.ns&&Math.hypot(P.x-s.sx,P.y-s.sy)<290){if(Math.abs(P.z)<DOCKZ)nearSys=i;else zHint=i}});
 }
 const SPAWN_R=990,WARP_STOP=SPAWN_R*2.5; /* Spawnbereich der Gegner (Radius) und Warp-Abschaltradius = 2,5x */
-function nearSpawn(){for(const s of SYS){if(!s.sp)continue;for(const q of s.sp)if(Math.hypot(P.x-q.x,P.y-q.y)<WARP_STOP)return true}for(const n of NEB)if(n.sp)for(const q of n.sp)if(Math.hypot(P.x-q.x,P.y-q.y)<WARP_STOP)return true;return false}
+function nearSpawn(){for(const s of SYS){if(!s.ns&&Math.hypot(P.x-s.sx,P.y-s.sy)<WARP_STOP)return 's';if(!s.sp)continue;for(const q of s.sp)if(Math.hypot(P.x-q.x,P.y-q.y)<WARP_STOP)return 'e'}for(const n of NEB)if(n.sp)for(const q of n.sp)if(Math.hypot(P.x-q.x,P.y-q.y)<WARP_STOP)return 'e';return false}
 const inNeb=()=>NEB.some(n=>Math.hypot(P.x-n.x,P.y-n.y)<n.r);
 function endWarp(){if(!P||!P.warp)return;P.warp=false;const m=Math.hypot(P.vx,P.vy),sp=P.st?P.st.sp:300;if(m>sp){P.vx*=sp/m;P.vy*=sp/m}}
 function useWarp(){
@@ -893,7 +893,7 @@ function useWarp(){
   if(P.warp){endWarp();toast('Warp aus: Waffen bereit','#6df0ff');return}
   if(WORLD!=='main')return toast('Im Abgrund ist kein Warp möglich','#ff4d4d');
   if(P.grab)return toast('Du wirst festgehalten','#ff4d4d');
-  if(nearSpawn())return toast('Zu nah an einer Gegnerzone: Warp nicht möglich','#ff4d4d');
+  {const nz=nearSpawn();if(nz)return toast(nz==='s'?'Zu nah an der Station: Warp nicht möglich':'Zu nah an einer Gegnerzone: Warp nicht möglich','#ff4d4d')}
   P.warp=true;toast('Warp aktiv: Geschwindigkeit ×100, Waffen aus','#6df0ff');
 }
 function useCloak(){
