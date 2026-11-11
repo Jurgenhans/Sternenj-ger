@@ -322,6 +322,14 @@ SYS.forEach(s=>mkAst(s.x,s.y,650*s.k,s.R+60*s.k,s.k>1?400:90));
 for(let i=0;i<300;i++)mkAst(rng0()*W,rng0()*H,0,260,12);
 const AAST=[];{const r=mulberry(4242);for(let i=0;i<80;i++){const a=r()*TAU,d=Math.sqrt(r())*ABR*.97,sz=6+r()*30,pts=[],m=6+Math.floor(r()*4);for(let k=0;k<m;k++)pts.push([Math.cos(k/m*TAU)*sz*(.7+r()*.5),Math.sin(k/m*TAU)*sz*(.7+r()*.5)]);AAST.push({x:ABX+Math.cos(a)*d,y:ABY+Math.sin(a)*d,sz,pts,rot:r()*TAU,d:r()>.5?1:-1})}}
 
+/* ---------- Nebel: außerhalb der Systeme, Radius 20 % eines Systems; schwer (oben), mittel, leer ---------- */
+const NEB=[
+  {name:'NEBEL ROT',diff:'SCHWER',x:800000,y:100000,lv:9,bf:2,mix:[8,12,10],fl:.3,bo:.3,dark:[.2,.01,.07],tint:[.55,.05,.18],mapc:'rgba(150,20,50,.38)',lc:'#ff7a90'},
+  {name:'NEBEL BLAU',diff:'MITTEL',x:1350000,y:550000,lv:5,bf:1,mix:[6,5,2],fl:.1,bo:.1,dark:[.03,.05,.22],tint:[.12,.2,.6],mapc:'rgba(40,70,190,.38)',lc:'#8fb0ff'},
+  {name:'NEBEL GRÜN',diff:'LEER',x:300000,y:1000000,lv:0,bf:1,mix:[0,0,0],fl:0,bo:0,dark:[.01,.16,.13],tint:[.04,.4,.32],mapc:'rgba(20,150,120,.38)',lc:'#6fe0c0'}];
+NEB.forEach((n,i)=>{n.r=.2*1150*SC;n.k=1;n.R=n.r;n.max=n.mix[0]+n.mix[1]+n.mix[2];n.tm=4;n.n=0;
+  const r=mulberry(900+i);n.pf=[];
+  for(let k=0;k<150;k++){const a=r()*TAU,d=n.r*Math.sqrt(r())*.95;n.pf.push({x:n.x+Math.cos(a)*d,y:n.y+Math.sin(a)*d,h:-500+r()*1200,s:n.r*(.07+.13*r()),a:.22+.2*r()})}});
 /* ---------- Schiffe & Module ---------- */
 const SHIPS=[
   {k:'Fregatte',slots:5,shield:120,hull:150,energy:100,spd:270,sreg:5,ereg:14,cargo:200,rad:14,price:0},
@@ -436,7 +444,18 @@ function newGame(){
      warp:false,wt:{},hitT:0,flash:0,cloak:0,cloakCd:0,dead:false,docked:-1,shield:1e5,hull:1e5,energy:1e5,st:null,fire:true,full:0};
   skK={regen:0,reactor:0,shield:0,dmg:0,een:0};skSel='regen';fullRepair(); score=0;kills=0; BOSS={cd:0,e:null};KB={cd:0,e:null};KA=null; WORLD='main';BH=null;BHcd=0;AB=null;MS=null;alWarned=false;FLR=[];flWarned=false;P.grab=null;document.body.classList.remove('aby'); resetWorld();
 }
-function resetWorld(){E=[];B=[];L=[];PT=[];TX=[];BL=[];RG=[];SYS.forEach((s,i)=>{if(s.k>1){for(let q=0;q<2;q++)for(let c=0;c<3;c++)for(let n=0;n<MIX[i][c]*(q?2:1);n++)spawnE(i,c,true,q)}else for(let c=0;c<3;c++)for(let n=0;n<MIX[i][c];n++)spawnE(i,c,true);s.tm=4})}
+function resetWorld(){E=[];B=[];L=[];PT=[];TX=[];BL=[];RG=[];NEB.forEach((n,i)=>{n.tm=4;for(let c=0;c<3;c++)for(let q=0;q<n.mix[c];q++)nebNpc(i,c,true)});
+  SYS.forEach((s,i)=>{if(s.k>1){for(let q=0;q<2;q++)for(let c=0;c<3;c++)for(let n=0;n<MIX[i][c]*(q?2:1);n++)spawnE(i,c,true,q)}else for(let c=0;c<3;c++)for(let n=0;n<MIX[i][c];n++)spawnE(i,c,true);s.tm=4})}
+function nebNpc(ni,c,any){
+  const n=NEB[ni],ec=EC[c],hm=1+.6*(n.lv-1),bf=n.bf;let x=n.x,y=n.y;
+  for(let t=0;t<8;t++){const a=rnd(0,TAU),r=n.r*Math.sqrt(rnd(.02,.9));x=n.x+Math.cos(a)*r;y=n.y+Math.sin(a)*r;if(any||!P||Math.hypot(x-P.x,y-P.y)>900)break}
+  const rr=Math.random(),wp=rr<n.fl?'flame':rr<n.fl+n.bo?'bolt':'gun';
+  E.push({c,si:-1,nb:ni,lv:n.lv,wp,fire:0,ft:0,x,y,z:zrnd(),vz:0,wz:0,vx:0,vy:0,ang:rnd(0,TAU),mh:ec.hull*hm*bf,ms:ec.shield*hm*bf,hull:ec.hull*hm*bf,shield:ec.shield*hm*bf,dm:(1+.35*(n.lv-1))*bf,
+    cd:rnd(0,1.5),aggro:0,dir:Math.random()<.5?1:-1,sk:Math.random(),wx:x,wy:y,wt:0,hit:0,dead:false});
+}
+function updNeb(dt){
+  NEB.forEach((n,i)=>{if(!n.max)return;let c=0;for(const e of E)if(e.nb===i&&!e.dead)c++;n.n=c;
+    if(c<n.max){n.tm-=dt;if(n.tm<=0){n.tm=7;const r=Math.random()*n.max,k=r<n.mix[0]?0:r<n.mix[0]+n.mix[1]?1:2;nebNpc(i,k,false)}}})}
 function pickPt(si){const b=MIX[si].reduce((p,c)=>p+c,0),n=[0,0];for(const e of E)if(e.si===si&&e.pt!==undefined&&!e.dead)n[e.pt]++;return (b-n[0])>=(2*b-n[1])?0:1}
 function alienObj(si,c,x,y){
   const ec=EC[c],lv=SYS[si].lv,hm=1+.6*(lv-1);
@@ -829,6 +848,7 @@ function updP(dt){
     else{ix=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);iy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0)}
     const m=Math.hypot(ix,iy);if(m>1){ix/=m;iy/=m}}
   if(P.warp&&(P.grab||WORLD!=='main'))endWarp();
+  if(P.warp&&nearSpawn()){endWarp();toast('Warp beendet: Gegnerzone voraus','#ff6a5e')}
   const WM=P.warp?100:1;
   let spm=1;
   if(P.grab){const g=P.grab;if(g.dead||g.ts!=='h'||WORLD!=='main'){P.grab=null}
@@ -857,12 +877,15 @@ function updP(dt){
   playerFire(dt);
   nearSys=-1;zHint=-1;if(WORLD==='main')SYS.forEach((s,i)=>{if(!s.ns&&Math.hypot(P.x-s.sx,P.y-s.sy)<290){if(Math.abs(P.z)<DOCKZ)nearSys=i;else zHint=i}});
 }
+const SPAWN_R=990,WARP_STOP=SPAWN_R*2.5; /* Spawnbereich der Gegner (Radius) und Warp-Abschaltradius = 2,5x */
+function nearSpawn(){for(const s of SYS){if(!s.sp)continue;for(const q of s.sp)if(Math.hypot(P.x-q.x,P.y-q.y)<WARP_STOP)return true}for(const n of NEB)if(n.max&&Math.hypot(P.x-n.x,P.y-n.y)<n.r+WARP_STOP)return true;return false}
 function endWarp(){if(!P||!P.warp)return;P.warp=false;const m=Math.hypot(P.vx,P.vy),sp=P.st?P.st.sp:300;if(m>sp){P.vx*=sp/m;P.vy*=sp/m}}
 function useWarp(){
   if(!P||P.dead||mode!=='play')return;
   if(P.warp){endWarp();toast('Warp aus: Waffen bereit','#6df0ff');return}
   if(WORLD!=='main')return toast('Im Abgrund ist kein Warp möglich','#ff4d4d');
   if(P.grab)return toast('Du wirst festgehalten','#ff4d4d');
+  if(nearSpawn())return toast('Zu nah an einer Gegnerzone: Warp nicht möglich','#ff4d4d');
   P.warp=true;toast('Warp aktiv: Geschwindigkeit ×100, Waffen aus','#6df0ff');
 }
 function useCloak(){
@@ -872,7 +895,7 @@ function useCloak(){
 
 /* ---------- Gegner, Geschosse, Beute ---------- */
 function updE(e,dt){
-  const c=EC[e.c],s=e.si>=0?SYS[e.si]:{x:ABX,y:ABY,k:1,R:1650},dx=P.x-e.x,dy=P.y-e.y,dz=P.z-e.z,d=Math.hypot(dx,dy,dz);
+  const c=EC[e.c],s=e.si>=0?SYS[e.si]:e.nb!==undefined?NEB[e.nb]:{x:ABX,y:ABY,k:1,R:1650},dx=P.x-e.x,dy=P.y-e.y,dz=P.z-e.z,d=Math.hypot(dx,dy,dz);
   const vis=!P.dead&&d<c.aggro*(P.cloak>0?.18:1);
   if(vis||e.alw)e.aggro=5;else e.aggro-=dt;
   let tx=0,ty=0,tzv=0;const sp=c.spd*(.9+e.sk*.2);
@@ -928,7 +951,7 @@ function updWorld(dt){
   tmr+=dt;SH=Math.max(0,SH-dt*2.4);for(let i=RG.length-1;i>=0;i--){RG[i].life-=dt;if(RG[i].life<=0)RG.splice(i,1)}if(KB.cd>0)KB.cd-=dt;if(BOSS.cd>0){BOSS.cd-=dt;if(BOSS.cd<=0){BH=null;if(WORLD==='main')toast('Zenith: Der Wächter kehrt zurück. Räume das System, um ihn zu rufen','#ffd04a')}}updP(dt);updFlares(dt);
   for(const e of E){if(e.dead)continue;if((e.x-P.x)**2+(e.y-P.y)**2<3200*3200)updE(e,dt)}
   E=E.filter(e=>!e.dead);
-  updB(dt);updL(dt);
+  updB(dt);updL(dt);if(WORLD==='main')updNeb(dt);
   if(WORLD==='abyss')updAby(dt);else SYS.forEach((s,i)=>{const n=E.reduce((p,e)=>p+(e.si===i?1:0),0);s.n=n;
     if(i===BOSSI&&(BOSS.e||BOSS.cd<=0)){if(!BOSS.e&&n===0)spawnBoss(s)}else if(i===KBI&&(KB.e||KB.cd<=0)){if(!KB.e&&n===0)spawnKB(s)}else if(n<s.max){s.tm-=dt;if(s.tm<=0){s.tm=7;const r=Math.random(),m=MIX[i],t=m[0]+m[1]+m[2];let c=r<m[0]/t?0:r<(m[0]+m[1])/t?1:2;spawnE(i,c,false)}}});
   for(let i=BL.length-1;i>=0;i--){BL[i].life-=dt;if(BL[i].life<=0)BL.splice(i,1)}
@@ -1501,6 +1524,11 @@ function render3D(){
     for(let i=1;i<p.length;i++){const x0=p[i-1][0],z0=p[i-1][1],x1=p[i][0],z1=p[i][1],y0=10+(p[i-1][2]||0),y1=10+(p[i][2]||0);beam(x0,y0,z0,x1,y1,z1,18,c,a0*.28);beam(x0,y0,z0,x1,y1,z1,6,c,a0*.8);beam(x0,y0,z0,x1,y1,z1,1.8,W3,a0)}}
   for(const g of RG){const t=1-g.life/g.ml;ringG(g.x,g.y,g.max*(1-Math.pow(1-t,3)),3+(g.z||0),hc(g.col),Math.max(0,1-t))}
   for(const p of PT){const f=clamp(p.life/p.max,0,1);if(!vis(p.x,p.y,10,p.z))continue;bill(CELL.glow,p.x,6+(p.z||0),p.y,p.sz*(.5+.7*f)*2.2,hc(p.col),f)}
+  YO=0;{const lim=7000/Z;for(const n of NEB){if(Math.hypot(n.x-cam.x,n.y-cam.y)>n.r+lim)continue;for(const q of n.pf)if(Math.hypot(q.x-cam.x,q.y-cam.y)<lim+q.s)bill(CELL.glow,q.x,q.h,q.y,q.s*.9,n.tint,.09)}}
+  flushSpr(ATLAS);
+  /* Nebel-Schwaden: abgedunkelt, normal gemischt, mit Tiefentest (Schiffe davor bleiben sichtbar) */
+  gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  {const lim=7000/Z;for(const n of NEB){if(Math.hypot(n.x-cam.x,n.y-cam.y)>n.r+lim)continue;for(const q of n.pf)if(Math.hypot(q.x-cam.x,q.y-cam.y)<lim+q.s)bill(CELL.glow,q.x,q.h,q.y,q.s,n.dark,q.a)}}
   flushSpr(ATLAS);
   gl.depthMask(true);gl.disable(gl.BLEND);
 }
@@ -1513,6 +1541,7 @@ function drawOverlay(){
   cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,ov.width,ov.height);cx.setTransform(dpr,0,0,dpr,0,0);
   if(!P||!P.st)return;cx.textAlign='center';const main=WORLD==='main';
   if(main){
+    for(const n of NEB)if(vis(n.x,n.y,n.r+300))lab(n.name+' · '+n.diff,n.x,400,n.y,24,n.lc);
     SYS.forEach((s,i)=>{if(vis(s.x,s.y,s.R+320))lab(s.name+' · STUFE '+s.lv+(tagOf(s)?' · '+tagOf(s):''),s.x+camCA*(s.k>1?34*s.k+300:SR0+14),0,s.y+camSA*(s.k>1?34*s.k+300:SR0+14),22,s.col);
       if(!s.ns&&vis(s.sx,s.sy,340)){const near=nearSys===i;lab('STATION '+s.name,s.sx+camCA*215,24,s.sy+camSA*215,24,near?'#44e07a':'#38d9ff');if(near)lab('Andocken möglich',s.sx+camCA*170,24,s.sy+camSA*170,16,'#44e07a');else if(zHint===i)lab(P.z>0?'Höhe anpassen: nach unten fliegen':'Höhe anpassen: nach oben fliegen',s.sx+camCA*140,24,s.sy+camSA*140,16,'#ffb347')}});
     if(BH&&vis(BH.x,BH.y,200))lab('SCHWARZES LOCH',BH.x+camCA*110,30,BH.y+camSA*110,18,'#d9a8ff');
@@ -1540,8 +1569,13 @@ function drawRadar(){
   c.beginPath();c.moveTo(R,4);c.lineTo(R,236);c.moveTo(4,R);c.lineTo(236,R);c.strokeStyle=WORLD==='abyss'?'rgba(255,70,70,.16)':'rgba(56,217,255,.14)';c.stroke();
   const sw=tmr*1.6;c.strokeStyle='rgba(68,224,122,.5)';c.beginPath();c.moveTo(R,R);c.lineTo(R+Math.cos(sw)*(R-3),R+Math.sin(sw)*(R-3));c.stroke();
   const k=(R-6)/range;
+  if(WORLD==='main'){c.save();c.beginPath();c.arc(R,R,R-2,0,TAU);c.clip();for(const n of NEB){const [dx,dy]=rt((n.x-P.x)*k,(n.y-P.y)*k);c.fillStyle=n.mapc;c.beginPath();c.arc(R+dx,R+dy,n.r*k,0,TAU);c.fill()}c.restore()}
   (WORLD==='main'?SYS:[]).forEach(s=>{if(s.ns)return;let [dx,dy]=rt((s.sx-P.x)*k,(s.sy-P.y)*k);const d=Math.hypot(dx,dy),m=R-12;if(d>m){dx*=m/d;dy*=m/d}
     c.fillStyle=d>m?'rgba(56,217,255,.55)':'#38d9ff';c.fillRect(R+dx-4,R+dy-4,8,8)});
+  if(WORLD==='main'){const cs=curSys();if(cs>=0&&SYS[cs].sp)SYS[cs].sp.forEach((q,qi)=>{let [dx,dy]=rt((q.x-P.x)*k,(q.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-9,out=d>m;if(out){dx*=m/d;dy*=m/d}
+    const col=qi?'#9a0018':'#ff2a2a';
+    if(!out){c.strokeStyle=col;c.globalAlpha=.55;c.lineWidth=1.5;c.beginPath();c.arc(R+dx,R+dy,SPAWN_R*k,0,TAU);c.stroke();c.globalAlpha=1}
+    c.fillStyle=col;c.strokeStyle=qi?'#ff6a7a':'#ffb0b0';c.lineWidth=1.2;c.beginPath();c.arc(R+dx,R+dy,qi?4.5:3.2,0,TAU);c.fill();c.stroke()})}
   c.fillStyle='#ff4d4d';
   for(const e of E){const [dx,dy]=rt((e.x-P.x)*k,(e.y-P.y)*k);if(dx*dx+dy*dy>(R-6)*(R-6))continue;const r=2.5+ct(e);c.fillStyle=e.boss?'#ffd04a':e.kb?'#d070ff':e.al?'#5dffb0':e.wp==='flame'?'#ff9a2a':e.wp==='bolt'?'#c9b3ff':'#ff4d4d';c.beginPath();c.arc(R+dx,R+dy,r,0,TAU);c.fill();const dzp=e.z-P.z;if(dzp>90||dzp<-90){const sg=dzp>0?-1:1,y0=R+dy+sg*(r+1.5);c.beginPath();c.moveTo(R+dx-3,y0);c.lineTo(R+dx+3,y0);c.lineTo(R+dx,y0+sg*4);c.closePath();c.fill()}}
   c.fillStyle='#ffd04a';for(const l of L){const [dx,dy]=rt((l.x-P.x)*k,(l.y-P.y)*k);if(dx*dx+dy*dy>(R-6)*(R-6))continue;c.fillRect(R+dx-1.5,R+dy-1.5,3,3)}
@@ -1563,6 +1597,7 @@ function drawMap(){if(WORLD==='abyss')return drawMapAby();
   const m=$('mapc').getContext('2d'),k=640/W;m.clearRect(0,0,640,640);m.fillStyle='#050a16';m.fillRect(0,0,640,640);
   m.strokeStyle='rgba(56,217,255,.12)';m.lineWidth=1;for(let i=1;i<9;i++){m.beginPath();m.moveTo(i*71,0);m.lineTo(i*71,640);m.moveTo(0,i*71);m.lineTo(640,i*71);m.stroke()}
   m.textAlign='center';
+  for(const n of NEB){m.fillStyle=n.mapc;m.beginPath();m.arc(n.x*k,n.y*k,Math.max(5,n.r*k),0,TAU);m.fill();m.fillStyle=n.lc;m.font='700 12px "Chakra Petch",sans-serif';m.fillText(n.name+' · '+n.diff+(n.max?' · '+(n.n||0)+'/'+n.max:''),n.x*k,n.y*k-n.r*k-8)}
   SYS.forEach(s=>{m.strokeStyle=s.col;m.lineWidth=2;m.setLineDash([5,5]);m.beginPath();m.arc(s.x*k,s.y*k,s.R*k,0,TAU);m.stroke();m.setLineDash([]);
     m.fillStyle=s.col;m.beginPath();m.arc(s.x*k,s.y*k,5,0,TAU);m.fill();
     m.font='700 14px "Chakra Petch",sans-serif';m.fillText(s.name,s.x*k,s.y*k-s.R*k-18);
