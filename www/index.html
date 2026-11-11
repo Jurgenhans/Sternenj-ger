@@ -322,14 +322,21 @@ SYS.forEach(s=>mkAst(s.x,s.y,650*s.k,s.R+60*s.k,s.k>1?400:90));
 for(let i=0;i<300;i++)mkAst(rng0()*W,rng0()*H,0,260,12);
 const AAST=[];{const r=mulberry(4242);for(let i=0;i<80;i++){const a=r()*TAU,d=Math.sqrt(r())*ABR*.97,sz=6+r()*30,pts=[],m=6+Math.floor(r()*4);for(let k=0;k<m;k++)pts.push([Math.cos(k/m*TAU)*sz*(.7+r()*.5),Math.sin(k/m*TAU)*sz*(.7+r()*.5)]);AAST.push({x:ABX+Math.cos(a)*d,y:ABY+Math.sin(a)*d,sz,pts,rot:r()*TAU,d:r()>.5?1:-1})}}
 
-/* ---------- Nebel: außerhalb der Systeme, Radius 20 % eines Systems; schwer (oben), mittel, leer ---------- */
+/* ---------- Nebel: außerhalb der Systeme, Radius 80 % eines Systems; schwer (oben), mittel, leer ---------- */
 const NEB=[
   {name:'NEBEL ROT',diff:'SCHWER',x:800000,y:100000,lv:9,bf:2,mix:[8,12,10],fl:.3,bo:.3,dark:[.2,.01,.07],tint:[.55,.05,.18],mapc:'rgba(150,20,50,.38)',lc:'#ff7a90'},
   {name:'NEBEL BLAU',diff:'MITTEL',x:1350000,y:550000,lv:5,bf:1,mix:[6,5,2],fl:.1,bo:.1,dark:[.03,.05,.22],tint:[.12,.2,.6],mapc:'rgba(40,70,190,.38)',lc:'#8fb0ff'},
   {name:'NEBEL GRÜN',diff:'LEER',x:300000,y:1000000,lv:0,bf:1,mix:[0,0,0],fl:0,bo:0,dark:[.01,.16,.13],tint:[.04,.4,.32],mapc:'rgba(20,150,120,.38)',lc:'#6fe0c0'}];
-NEB.forEach((n,i)=>{n.r=.2*1150*SC;n.k=1;n.R=n.r;n.max=n.mix[0]+n.mix[1]+n.mix[2];n.tm=4;n.n=0;
+NEB.forEach((n,i)=>{n.r=.8*1150*SC;n.k=1;n.R=n.r;n.max=n.mix[0]+n.mix[1]+n.mix[2];n.tm=4;n.n=0;if(n.max){const a=mulberry(950+i)()*TAU;n.sp=[{x:n.x+Math.cos(a)*n.r*.4,y:n.y+Math.sin(a)*n.r*.4}]} /* ein Spawn-Punkt wie in den Systemen */
   const r=mulberry(900+i);n.pf=[];
-  for(let k=0;k<150;k++){const a=r()*TAU,d=n.r*Math.sqrt(r())*.95;n.pf.push({x:n.x+Math.cos(a)*d,y:n.y+Math.sin(a)*d,h:-500+r()*1200,s:n.r*(.07+.13*r()),a:.22+.2*r()})}});
+  for(let k=0;k<1200;k++){const a=r()*TAU,d=n.r*Math.sqrt(r())*.95;n.pf.push({x:n.x+Math.cos(a)*d,y:n.y+Math.sin(a)*d,h:-500+r()*1200,s:n.r*(.03+.05*r()),a:.3+.25*r()})}});
+/* Asteroiden und Kristalle (sehr dunkel) rund um die NPC-Spawn-Punkte der Systeme und Nebel */
+(function(){const r=mulberry(5150),pts=[];
+  SYS.forEach(s=>{if(s.sp)s.sp.forEach(q=>pts.push(q))});NEB.forEach(n=>{if(n.sp)n.sp.forEach(q=>pts.push(q))});
+  const RT=[[.17,.14,.21],[.12,.15,.18],[.2,.13,.13],[.13,.13,.19]],CT=[[.13,.06,.26],[.04,.17,.18],[.25,.05,.1],[.06,.1,.28],[.05,.2,.11]];
+  for(const q of pts)for(let i=0;i<70;i++){const a=r()*TAU,d=140+Math.sqrt(r())*2300,cr=r()<.35,sz=cr?12+r()*28:10+r()*35;
+    AST.push({x:q.x+Math.cos(a)*d,y:q.y+Math.sin(a)*d,sz,pts:[],rot:r()*TAU,d:r()>.5?1:-1,h:(r()-.5)*700,cr,t:cr?CT[Math.floor(r()*CT.length)]:RT[Math.floor(r()*RT.length)]})}
+})();
 /* ---------- Schiffe & Module ---------- */
 const SHIPS=[
   {k:'Fregatte',slots:5,shield:120,hull:150,energy:100,spd:270,sreg:5,ereg:14,cargo:200,rad:14,price:0},
@@ -448,9 +455,9 @@ function resetWorld(){E=[];B=[];L=[];PT=[];TX=[];BL=[];RG=[];NEB.forEach((n,i)=>
   SYS.forEach((s,i)=>{if(s.k>1){for(let q=0;q<2;q++)for(let c=0;c<3;c++)for(let n=0;n<MIX[i][c]*(q?2:1);n++)spawnE(i,c,true,q)}else for(let c=0;c<3;c++)for(let n=0;n<MIX[i][c];n++)spawnE(i,c,true);s.tm=4})}
 function nebNpc(ni,c,any){
   const n=NEB[ni],ec=EC[c],hm=1+.6*(n.lv-1),bf=n.bf;let x=n.x,y=n.y;
-  for(let t=0;t<8;t++){const a=rnd(0,TAU),r=n.r*Math.sqrt(rnd(.02,.9));x=n.x+Math.cos(a)*r;y=n.y+Math.sin(a)*r;if(any||!P||Math.hypot(x-P.x,y-P.y)>900)break}
+  const q=n.sp[0];for(let t=0;t<8;t++){const a=rnd(0,TAU),r=rnd(260,990);x=q.x+Math.cos(a)*r;y=q.y+Math.sin(a)*r;if(any||!P||Math.hypot(x-P.x,y-P.y)>900)break}
   const rr=Math.random(),wp=rr<n.fl?'flame':rr<n.fl+n.bo?'bolt':'gun';
-  E.push({c,si:-1,nb:ni,lv:n.lv,wp,fire:0,ft:0,x,y,z:zrnd(),vz:0,wz:0,vx:0,vy:0,ang:rnd(0,TAU),mh:ec.hull*hm*bf,ms:ec.shield*hm*bf,hull:ec.hull*hm*bf,shield:ec.shield*hm*bf,dm:(1+.35*(n.lv-1))*bf,
+  E.push({c,si:-1,nb:ni,pt:0,lv:n.lv,wp,fire:0,ft:0,x,y,z:zrnd(),vz:0,wz:0,vx:0,vy:0,ang:rnd(0,TAU),mh:ec.hull*hm*bf,ms:ec.shield*hm*bf,hull:ec.hull*hm*bf,shield:ec.shield*hm*bf,dm:(1+.35*(n.lv-1))*bf,
     cd:rnd(0,1.5),aggro:0,dir:Math.random()<.5?1:-1,sk:Math.random(),wx:x,wy:y,wt:0,hit:0,dead:false});
 }
 function updNeb(dt){
@@ -849,7 +856,7 @@ function updP(dt){
     const m=Math.hypot(ix,iy);if(m>1){ix/=m;iy/=m}}
   if(P.warp&&(P.grab||WORLD!=='main'))endWarp();
   if(P.warp&&nearSpawn()){endWarp();toast('Warp beendet: Gegnerzone voraus','#ff6a5e')}
-  const WM=P.warp?100:1;
+  const WM=P.warp?(inNeb()?10:100):1;
   let spm=1;
   if(P.grab){const g=P.grab;if(g.dead||g.ts!=='h'||WORLD!=='main'){P.grab=null}
     else{spm=.3;const gx=g.x-P.x,gy=g.y-P.y,gz=g.z-P.z,gd=Math.hypot(gx,gy,gz)||1,hd=EC[g.c].rad+SHIPS[P.cls].rad+40;if(gd>hd){P.x+=gx/gd*130*dt;P.y+=gy/gd*130*dt;P.z+=gz/gd*130*dt}}}
@@ -878,7 +885,8 @@ function updP(dt){
   nearSys=-1;zHint=-1;if(WORLD==='main')SYS.forEach((s,i)=>{if(!s.ns&&Math.hypot(P.x-s.sx,P.y-s.sy)<290){if(Math.abs(P.z)<DOCKZ)nearSys=i;else zHint=i}});
 }
 const SPAWN_R=990,WARP_STOP=SPAWN_R*2.5; /* Spawnbereich der Gegner (Radius) und Warp-Abschaltradius = 2,5x */
-function nearSpawn(){for(const s of SYS){if(!s.sp)continue;for(const q of s.sp)if(Math.hypot(P.x-q.x,P.y-q.y)<WARP_STOP)return true}for(const n of NEB)if(n.max&&Math.hypot(P.x-n.x,P.y-n.y)<n.r+WARP_STOP)return true;return false}
+function nearSpawn(){for(const s of SYS){if(!s.sp)continue;for(const q of s.sp)if(Math.hypot(P.x-q.x,P.y-q.y)<WARP_STOP)return true}for(const n of NEB)if(n.sp)for(const q of n.sp)if(Math.hypot(P.x-q.x,P.y-q.y)<WARP_STOP)return true;return false}
+const inNeb=()=>NEB.some(n=>Math.hypot(P.x-n.x,P.y-n.y)<n.r);
 function endWarp(){if(!P||!P.warp)return;P.warp=false;const m=Math.hypot(P.vx,P.vy),sp=P.st?P.st.sp:300;if(m>sp){P.vx*=sp/m;P.vy*=sp/m}}
 function useWarp(){
   if(!P||P.dead||mode!=='play')return;
@@ -1136,6 +1144,10 @@ const HORN=(()=>{const mb=newMesh();mbConeX(mb,1,.5,6,[.78,1,.9],.2);return uplo
 const ROCK=(()=>{const a=[];for(let k=0;k<6;k++){const mb=newMesh(),r=mulberry(300+k),jr=[];for(let i=0;i<60;i++)jr.push(.68+r()*.5);
   mbSph(mb,0,0,0,1,.78+r()*.3,.9+r()*.2,7,5,[.9,.9,.95],0,true,jr);
   for(let i=0;i<mb.v.length;i+=10){const s=.72+((i/10*37)%11)/40;mb.v[i+6]*=s;mb.v[i+7]*=s;mb.v[i+8]*=s}a.push(upload(mb))}return a})();
+const CRYS=(()=>{const mb=newMesh(),n=6,ctr=[0,.45,0],ring=(y,r)=>Array.from({length:n},(_,i)=>{const a=i/n*TAU;return[Math.cos(a)*r,y,Math.sin(a)*r]});
+  const lo=ring(-1.2,.8),hi=ring(1.4,.8),top=[0,2.9,0],bot=[0,-2,0],c=[.95,.95,1];
+  for(let i=0;i<n;i++){const j=(i+1)%n;mb.triOut(lo[i],lo[j],hi[j],c,0,ctr);mb.triOut(lo[i],hi[j],hi[i],c,0,ctr);mb.triOut(hi[i],hi[j],top,[1.1,1.1,1.1],0,ctr);mb.triOut(lo[j],lo[i],bot,[.7,.7,.75],0,ctr)}
+  return upload(mb)})();
 const ANNULUS=(()=>{const mb=newMesh(),n=72,r0=ABR,r1=7000,c=[1,1,1];
   for(let i=0;i<n;i++){const a=i/n*TAU,b=(i+1)/n*TAU,p=(r,t)=>[ABX+Math.cos(t)*r,0,ABY+Math.sin(t)*r];
     mb.tri(p(r0,a),p(r1,a),p(r1,b),c,1,[0,1,0]);mb.tri(p(r0,a),p(r1,b),p(r0,b),c,1,[0,1,0])}return upload(mb)})();
@@ -1484,8 +1496,14 @@ function render3D(){
   if(main){SYS.forEach(s=>{if(vis(s.x,s.y,s.R+320))sysDraw(s)});for(const f of FLR)if(vis(SYS[f.si].x,SYS[f.si].y,SYS[f.si].R+320))flareDraw(f);wallRect()}else abyssBack();
   /* Asteroiden */
   const rt=main?[.55,.44,.64]:[.52,.18,.26],list=main?AST:AAST;
-  for(let i=0;i<list.length;i++){const a=list[i];if(!vis(a.x,a.y,30))continue;
-    const q=a.sz,rot=a.rot+tmr*.04*a.d;drawMesh(ROCK[i%6],model(a.x,((i*37)%11-5)*4,a.y,rot,tmr*.05*a.d+i,i*.7,q,q,q),rt)}
+  for(let i=0;i<list.length;i++){const a=list[i];if(!vis(a.x,a.y,30+(a.cr?a.sz*2.5:0),a.h||0))continue;
+    const q=a.sz,rot=a.rot+tmr*.04*a.d,hy=(a.h||0)+((i*37)%11-5)*4;
+    if(a.cr){const t=a.t,m=.5*q;
+      drawMesh(CRYS,model(a.x,hy+q*.5,a.y,rot,0,0,m,m,m),t,0,1,.3);
+      drawMesh(CRYS,model(a.x+q*.4,hy,a.y+q*.15,rot+1.2,.55,.3,m*.6,m*.6,m*.6),t,0,1,.3);
+      drawMesh(CRYS,model(a.x-q*.35,hy,a.y-q*.25,rot+2.5,-.5,.25,m*.5,m*.5,m*.5),t,0,1,.3);
+      bill(CELL.glow,a.x,hy+q,a.y,q*2.4,[Math.min(1,t[0]*3),Math.min(1,t[1]*3),Math.min(1,t[2]*3)],.16)}
+    else drawMesh(ROCK[i%6],model(a.x,hy,a.y,rot,tmr*.05*a.d+i,i*.7,q,q,q),a.t||rt)}
   if(main){SYS.forEach((s,i)=>{if(!s.ns&&vis(s.sx,s.sy,340))stationDraw(s,i)});if(BH)bhDraw()}
   /* Beute */
   for(const l of L){if(!vis(l.x,l.y,20,l.z))continue;YO=0;altLn(l.x,l.y,l.z||0,[1,.82,.29],.2);YO=l.z||0;const p=1+.15*Math.sin(tmr*6+l.x);
@@ -1572,7 +1590,7 @@ function drawRadar(){
   if(WORLD==='main'){c.save();c.beginPath();c.arc(R,R,R-2,0,TAU);c.clip();for(const n of NEB){const [dx,dy]=rt((n.x-P.x)*k,(n.y-P.y)*k);c.fillStyle=n.mapc;c.beginPath();c.arc(R+dx,R+dy,n.r*k,0,TAU);c.fill()}c.restore()}
   (WORLD==='main'?SYS:[]).forEach(s=>{if(s.ns)return;let [dx,dy]=rt((s.sx-P.x)*k,(s.sy-P.y)*k);const d=Math.hypot(dx,dy),m=R-12;if(d>m){dx*=m/d;dy*=m/d}
     c.fillStyle=d>m?'rgba(56,217,255,.55)':'#38d9ff';c.fillRect(R+dx-4,R+dy-4,8,8)});
-  if(WORLD==='main'){const cs=curSys();if(cs>=0&&SYS[cs].sp)SYS[cs].sp.forEach((q,qi)=>{let [dx,dy]=rt((q.x-P.x)*k,(q.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-9,out=d>m;if(out){dx*=m/d;dy*=m/d}
+  if(WORLD==='main'){const cs=curSys();let spl=cs>=0&&SYS[cs].sp?SYS[cs].sp:null;if(!spl)for(const n of NEB)if(n.sp&&Math.hypot(P.x-n.x,P.y-n.y)<n.r)spl=n.sp;if(spl)spl.forEach((q,qi)=>{let [dx,dy]=rt((q.x-P.x)*k,(q.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-9,out=d>m;if(out){dx*=m/d;dy*=m/d}
     const col=qi?'#9a0018':'#ff2a2a';
     if(!out){c.strokeStyle=col;c.globalAlpha=.55;c.lineWidth=1.5;c.beginPath();c.arc(R+dx,R+dy,SPAWN_R*k,0,TAU);c.stroke();c.globalAlpha=1}
     c.fillStyle=col;c.strokeStyle=qi?'#ff6a7a':'#ffb0b0';c.lineWidth=1.2;c.beginPath();c.arc(R+dx,R+dy,qi?4.5:3.2,0,TAU);c.fill();c.stroke()})}
@@ -1639,7 +1657,7 @@ function updHUD(){
   const sig=P.slots.map(i=>i?i.id:0).join(',');
   if(sig!==modSig){modSig=sig;
     $('mods').innerHTML=P.slots.map(it=>it?'<div class="chip" style="border-color:'+TC[it.tier-1]+';color:'+catCol(it.t)+';background:'+catCol(it.t)+'26">'+MT[it.t].ic+'<small>'+ROM[it.tier-1]+'</small><span class="nm">'+MT[it.t].n+'<span>MK-'+ROM[it.tier-1]+(it.up?' +'+it.up+'%':'')+'</span></span></div>':'<div class="chip empty">·<span class="nm"></span></div>').join('')}
-  $('bwarp').hidden=WORLD!=='main';$('bwarp').classList.toggle('on',P.warp);$('bwarp').innerHTML=P.warp?'WARP<br>AN':'WARP';
+  $('bwarp').hidden=WORLD!=='main';$('bwarp').classList.toggle('on',P.warp);$('bwarp').innerHTML=P.warp?'WARP<br>×'+(inNeb()?10:100):'WARP';
   $('bfire').classList.toggle('on',P.fire&&!P.warp);$('bfire').classList.toggle('off',!P.fire);$('bfire').innerHTML=P.fire?'FEUER<br>AUTO':'FEUER<br>AUS';
 }
 
