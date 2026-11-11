@@ -458,7 +458,7 @@ function nebNpc(ni,c,any){
   const q=n.sp[0];
   for(let t=0;t<8;t++){
     const a=rnd(0,TAU),r=rnd(260,990);x=q.x+Math.cos(a)*r;y=q.y+Math.sin(a)*r;
-    if(any||!P||Math.hypot(x-P.x,y-P.y)>350){valid=true;break}
+    if(any||!P||Math.hypot(x-P.x,y-P.y)>665){valid=true;break}
   }
   // Keinen NPC direkt neben dem Spieler erzeugen, wenn alle Versuche ungeeignet waren.
   if(!valid)return false;
@@ -479,23 +479,25 @@ function alienObj(si,c,x,y){
 function spawnE(si,c,any,pt){
   if(SYS[si].al)c+=4;
   const s=SYS[si],ec=EC[c],lv=s.lv,hm=1+.6*(lv-1),bf=s.bf||1;
-  // Prefer the less-filled point; if blocked, try the other point as fallback.
-  const preferred=s.sp&&pt===undefined?pickPt(si):pt;
-  const points=s.sp?(pt===undefined?[preferred,...s.sp.map((_,i)=>i).filter(i=>i!==preferred)]:[pt]):[undefined];
-  for(const q of points){
-    const ctr=s.sp?s.sp[q]:s;
-    for(let t=0;t<16;t++){
-      const a=rnd(0,TAU),r=rnd(260,990),x=ctr.x+Math.cos(a)*r,y=ctr.y+Math.sin(a)*r;
-      if(!any&&P&&Math.hypot(x-P.x,y-P.y)<350)continue;
-      if(Math.hypot(x-s.sx,y-s.sy)<400)continue;
-      if(s.al){const o=alienObj(si,c,x,y);o.pt=q;E.push(o);return true}
-      const rr=Math.random(),wp=rr<s.fl?'flame':rr<s.fl+s.bo?'bolt':'gun';
-      E.push({c,si,wp,fire:0,ft:0,x,y,z:zrnd(),vz:0,wz:0,vx:0,vy:0,ang:rnd(0,TAU),mh:ec.hull*hm*bf,ms:ec.shield*hm*bf,hull:ec.hull*hm*bf,shield:ec.shield*hm*bf,dm:(1+.35*(lv-1))*bf,pt:q,
-        cd:rnd(0,1.5),aggro:0,dir:Math.random()<.5?1:-1,sk:Math.random(),wx:x,wy:y,wt:0,hit:0,dead:false});
-      return true;
-    }
+  // Jeder Spawn bleibt strikt an genau einen der zwei festgelegten Systempunkte gebunden.
+  // Die Punktwahl wird nach NPC-Bestand ausgeglichen; ein Ausweichen zum anderen Punkt ist verboten.
+  const q=s.sp?(pt===undefined?pickPt(si):pt):undefined;
+  let pos=null;
+  const ctr=s.sp?s.sp[q]:s;
+  // Zufällige Position nur im direkten Umfeld dieses festen Spawnpunkts.
+  for(let t=0;t<100;t++){
+    const a=rnd(0,TAU),r=rnd(500,2600),x=ctr.x+Math.cos(a)*r,y=ctr.y+Math.sin(a)*r;
+    if(!any&&P&&Math.hypot(x-P.x,y-P.y)<665)continue;
+    if(Math.hypot(x-s.sx,y-s.sy)<400)continue;
+    pos={x,y,q};break;
   }
-  return false;
+  if(!pos)return false;
+  const {x,y}=pos;
+  if(s.al){const o=alienObj(si,c,x,y);o.pt=q;E.push(o);return true}
+  const rr=Math.random(),wp=rr<s.fl?'flame':rr<s.fl+s.bo?'bolt':'gun';
+  E.push({c,si,wp,fire:0,ft:0,x,y,z:zrnd(),vz:0,wz:0,vx:0,vy:0,ang:rnd(0,TAU),mh:ec.hull*hm*bf,ms:ec.shield*hm*bf,hull:ec.hull*hm*bf,shield:ec.shield*hm*bf,dm:(1+.35*(lv-1))*bf,pt:q,
+    cd:rnd(0,1.5),aggro:0,dir:Math.random()<.5?1:-1,sk:Math.random(),wx:x,wy:y,wt:0,hit:0,dead:false});
+  return true;
 }
 function toast(msg,col){const d=document.createElement('div');d.className='toast';d.textContent=msg;if(col)d.style.color=col;$('toasts').appendChild(d);
   while($('toasts').children.length>4)$('toasts').firstChild.remove();setTimeout(()=>d.remove(),2700)}
