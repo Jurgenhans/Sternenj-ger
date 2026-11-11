@@ -250,7 +250,7 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
 </div>
 <div class="ov" id="skills" hidden>
   <h2>SKILLS</h2>
-  <p>Passive Skills durch NPC-Abschüsse. Es zählt immer nur ein Skill mit: wähle, welcher. Regen und Reaktor wirken wie ein Modul der gleichen Stufe, Schild Punkte, Waffenschaden und Energiesparen bringen feste Boni pro Stufe.</p>
+  <p>Passive Skills durch NPC-Abschüsse. Es zählt immer nur ein Skill mit: wähle, welcher. Regen und Reaktor wirken wie ein Modul der gleichen Stufe, Schild Punkte, Waffenschaden, Energiesparen und Waffenreichweite bringen feste Boni pro Stufe.</p>
   <div id="skhead" class="cur" style="font-family:var(--f-d);letter-spacing:.06em;color:var(--gold)"></div>
   <div id="skl"></div>
   <button class="b" id="bskx">Schließen</button>
@@ -326,10 +326,13 @@ const AAST=[];{const r=mulberry(4242);for(let i=0;i<80;i++){const a=r()*TAU,d=Ma
 const NEB=[
   {name:'NEBEL ROT',diff:'SCHWER',x:800000,y:100000,lv:9,bf:2,mix:[8,12,10],fl:.3,bo:.3,dark:[.2,.01,.07],tint:[.55,.05,.18],mapc:'rgba(150,20,50,.38)',lc:'#ff7a90'},
   {name:'NEBEL BLAU',diff:'MITTEL',x:1350000,y:550000,lv:5,bf:1,mix:[6,5,2],fl:.1,bo:.1,dark:[.03,.05,.22],tint:[.12,.2,.6],mapc:'rgba(40,70,190,.38)',lc:'#8fb0ff'},
-  {name:'NEBEL GRÜN',diff:'LEER',x:300000,y:1000000,lv:0,bf:1,mix:[0,0,0],fl:0,bo:0,dark:[.01,.16,.13],tint:[.04,.4,.32],mapc:'rgba(20,150,120,.38)',lc:'#6fe0c0'}];
-NEB.forEach((n,i)=>{n.r=.8*1150*SC;n.k=1;n.R=n.r;n.max=n.mix[0]+n.mix[1]+n.mix[2];n.tm=4;n.n=0;if(n.max){const a=mulberry(950+i)()*TAU;n.sp=[{x:n.x+Math.cos(a)*n.r*.4,y:n.y+Math.sin(a)*n.r*.4}]} /* ein Spawn-Punkt wie in den Systemen */
+  {name:'NEBEL GRÜN',diff:'LEER',x:300000,y:1000000,lv:0,bf:1,mix:[0,0,0],fl:0,bo:0,dark:[.01,.16,.13],tint:[.04,.4,.32],mapc:'rgba(20,150,120,.38)',lc:'#6fe0c0'},
+  {name:'NEBEL GEMISCHT',diff:'EXTREM',x:1120000,y:1080000,lv:9,bf:2,mix:[16,24,20],fl:.3,bo:.3,dark:[.08,.06,.14],tint:[.24,.18,.38],mapc:'rgba(105,65,145,.42)',lc:'#d5a6ff',size:1.5}];
+NEB.forEach((n,i)=>{n.r=.8*1150*SC*(n.size||1);n.k=1;n.R=n.r;n.max=n.mix[0]+n.mix[1]+n.mix[2];n.tm=4;n.n=0;if(n.max){const a=mulberry(950+i)()*TAU;n.sp=[{x:n.x+Math.cos(a)*n.r*.4,y:n.y+Math.sin(a)*n.r*.4}]} /* ein Spawn-Punkt wie in den Systemen */
   const r=mulberry(900+i);n.pf=[];
-  for(let k=0;k<1200;k++){const a=r()*TAU,d=n.r*Math.sqrt(r())*.95;n.pf.push({x:n.x+Math.cos(a)*d,y:n.y+Math.sin(a)*d,h:-500+r()*1200,s:n.r*(.03+.05*r()),a:.3+.25*r()})}});
+  for(let k=0;k<1200*(n.size||1);k++){const a=r()*TAU,d=n.r*Math.sqrt(r())*.95;
+    if(n.size>1){const color=[NEB[0],NEB[1],NEB[2]][k%3];n.pf.push({x:n.x+Math.cos(a)*d,y:n.y+Math.sin(a)*d,h:-500+r()*1200,s:n.r*(.03+.05*r()),a:.3+.25*r(),tint:color.tint,dark:color.dark})}
+    else n.pf.push({x:n.x+Math.cos(a)*d,y:n.y+Math.sin(a)*d,h:-500+r()*1200,s:n.r*(.03+.05*r()),a:.3+.25*r()})}});
 /* Nebel an den NPC-Spawnpunkten: Punkt 1 bleibt klar, nur Punkt 2 erhält alle drei Nebelfarben gemischt. */
 const SPNEB=[];
 SYS.forEach((s,i)=>{
@@ -388,7 +391,9 @@ const dmgOf=it=>MT[it.t].dmg*TS[it.tier-1]*(1+(it.up||0)/100)*(1+SK_DMG*skLvl('d
 const nameOf=it=>MT[it.t].n+' '+ROM[it.tier-1]+(it.up?' +'+it.up+'%':'');
 const price=it=>Math.round(MT[it.t].price*TP[it.tier-1]);
 const wEn=it=>MT[it.t].en*(1+(TS[it.tier-1]-1)*.5)*(1-SK_EN*skLvl('een')/100);
-const wRng=it=>MT[it.t].rng*(1+.05*(it.tier-1));
+const skRangeMult=()=>1+SK_RANGE*skLvl('range')/100;
+const wRng=it=>MT[it.t].rng*(1+.05*(it.tier-1))*skRangeMult();
+const droneRng=()=>MT.drone.rng*skRangeMult();
 function describe(it){
   const m=MT[it.t],k=TS[it.tier-1]*(1+(it.up||0)/100);
   if(m.sp==='flame')return `Dauerfeuer ${Math.round(m.dmg*k/m.cd)} Schaden/s · Reichweite ${Math.round(wRng(it))} · durchdringt`;
@@ -436,8 +441,8 @@ const LIM=t=>MT[t].c==='w'?5:t==='regen'?10:t==='damper'?3:2;
 const cntT=t=>P.slots.filter(x=>x&&x.t===t).length;
 /* Passive Skills: ab 10 Abschüssen Stufe 1, danach alle 20 eine Stufe mehr (bis 4). Wirkt wie ein Modul dieser Stufe. Abschüsse zählen nur für den gewählten Skill. */
 const SK_T=[10,30,50,70];
-let skK={regen:0,reactor:0,shield:0,dmg:0,een:0},skSel='regen';
-const SK_N={regen:'SCHILD REGEN',reactor:'REAKTOR',shield:'SCHILD PUNKTE',dmg:'WAFFENSCHADEN',een:'ENERGIESPAREN'},SK_SH=50,SK_DMG=2,SK_EN=2; /* Energiespar-Skill: -2 % Energieverbrauch aller Waffen pro Stufe */ /* Schaden-Skill: +2 % Schaden aller Waffen pro Stufe */ /* Schild-Skill: +50 Schild pro Stufe */ /* Abschüsse pro Skill; nur der gewählte Skill zählt mit */
+let skK={regen:0,reactor:0,shield:0,dmg:0,een:0,range:0},skSel='regen';
+const SK_N={regen:'SCHILD REGEN',reactor:'REAKTOR',shield:'SCHILD PUNKTE',dmg:'WAFFENSCHADEN',een:'ENERGIESPAREN',range:'WAFFENREICHWEITE'},SK_SH=50,SK_DMG=2,SK_EN=2,SK_RANGE=10; /* Energiespar-Skill: -2 % Energieverbrauch aller Waffen pro Stufe */ /* Schaden-Skill: +2 % Schaden aller Waffen pro Stufe */ /* Schild-Skill: +50 Schild pro Stufe */ /* Abschüsse pro Skill; nur der gewählte Skill zählt mit */
 const skLvl=t=>{let l=0;for(const x of SK_T)if(skK[t]>=x)l++;return l};
 function enforceLimits(){const c={};P.slots.forEach((it,i)=>{if(!it)return;c[it.t]=(c[it.t]||0)+1;if(c[it.t]>LIM(it.t)){P.storage.push(it);P.slots[i]=null}})}
 function stats(){
@@ -465,7 +470,7 @@ function newGame(){
   P={x:SYS[0].sx+160,y:SYS[0].sy+160,vx:0,vy:0,z:0,vz:0,ang:-Math.PI/2,cls:0,credits:200,owned:[true,false,false,false,false],home:0,
      slots:[mk('laser'),mk('laser'),mk('shield'),mk('reactor'),null],cargo:[],storage:[mk('armor'),mk('regen')],
      vo:{},vr:'',warp:false,wt:{},hitT:0,flash:0,cloak:0,cloakCd:0,dead:false,docked:-1,shield:1e5,hull:1e5,energy:1e5,st:null,fire:true,full:0};
-  skK={regen:0,reactor:0,shield:0,dmg:0,een:0};skSel='regen';fullRepair(); score=0;kills=0; BOSS={cd:0,e:null};KB={cd:0,e:null};KA=null; WORLD='main';BH=null;BHcd=0;AB=null;MS=null;alWarned=false;FLR=[];flWarned=false;P.grab=null;document.body.classList.remove('aby'); resetWorld();
+  skK={regen:0,reactor:0,shield:0,dmg:0,een:0,range:0};skSel='regen';fullRepair(); score=0;kills=0; BOSS={cd:0,e:null};KB={cd:0,e:null};KA=null; WORLD='main';BH=null;BHcd=0;AB=null;MS=null;alWarned=false;FLR=[];flWarned=false;P.grab=null;document.body.classList.remove('aby'); resetWorld();
 }
 function resetWorld(){E=[];B=[];L=[];PT=[];TX=[];BL=[];RG=[];NEB.forEach((n,i)=>{n.tm=4;for(let c=0;c<3;c++)for(let q=0;q<n.mix[c];q++)nebNpc(i,c,true)});
   SYS.forEach((s,i)=>{if(s.k>1){for(let q=0;q<2;q++)for(let c=0;c<3;c++)for(let n=0;n<MIX[i][c]*(q?2:1);n++)spawnE(i,c,true,q)}else for(let c=0;c<3;c++)for(let n=0;n<MIX[i][c];n++)spawnE(i,c,true);s.tm=4})}
@@ -473,7 +478,7 @@ function nebNpc(ni,c,any){
   const n=NEB[ni],ec=EC[c],hm=1+.6*(n.lv-1),bf=n.bf;let x=n.x,y=n.y,valid=false;
   const q=n.sp[0];
   for(let t=0;t<8;t++){
-    const a=rnd(0,TAU),r=rnd(260,990);x=q.x+Math.cos(a)*r;y=q.y+Math.sin(a)*r;
+    const a=rnd(0,TAU),scale=n.size||1,r=rnd(260*scale,990*scale);x=q.x+Math.cos(a)*r;y=q.y+Math.sin(a)*r;
     if(any||!P||Math.hypot(x-P.x,y-P.y)>665){valid=true;break}
   }
   // Keinen NPC direkt neben dem Spieler erzeugen, wenn alle Versuche ungeeignet waren.
@@ -746,16 +751,16 @@ function abyNpc(c,wp,x,y,lv){
 }
 function spawnKB(s){
   const a=rnd(0,TAU),ec=EC[2],lv=s.lv,hm=1+.6*(lv-1),x=s.x+Math.cos(a)*650*s.k,y=s.y+Math.sin(a)*650*s.k;
-  /* Normale Größe wie ein Schlachtschiff, aber 100000 Schild */
-  const b={c:2,si:KBI,wp:'gun',kb:1,fire:0,ft:0,x,y,z:zrnd(),vz:0,wz:0,vx:0,vy:0,ang:rnd(0,TAU),mh:ec.hull*hm,ms:100000,hull:ec.hull*hm,shield:100000,dm:1+.35*(lv-1),
+  /* Normale Größe wie ein Schlachtschiff, mit 5000 Schild */
+  const b={c:2,si:KBI,wp:'gun',kb:1,fire:0,ft:0,x,y,z:zrnd(),vz:0,wz:0,vx:0,vy:0,ang:rnd(0,TAU),mh:ec.hull*hm,ms:5000,hull:ec.hull*hm,shield:5000,dm:1+.35*(lv-1),
     cd:rnd(0,1.5),aggro:0,dir:1,sk:Math.random(),wx:x,wy:y,wt:0,hit:0,dead:false};
   E.push(b);KB.e=b;snd('warn');toast('WARNUNG: Der Kepler-Titan erscheint!','#d070ff');burst(x,y,'#d070ff',40,300,1);ring(x,y,260,'#d070ff',b.z);
 }
 function spawnKBAby(){
-  /* Gleicher Titan wie in Kepler (100000 Schild, Größe eines Schlachtschiffs); Struktur und Schaden wachsen mit der Welle wie bei den anderen NPCs */
+  /* Gleicher Titan wie in Kepler (5000 Schild, Größe eines Schlachtschiffs); Struktur und Schaden wachsen mit der Welle wie bei den anderen NPCs */
   const ec=EC[2],lv=1+AB.wave*.075,hm=1+.6*(lv-1);
   let x=0,y=0;for(let t=0;t<8;t++){const a=rnd(0,TAU),rr=ABR*rnd(.55,.9);x=ABX+Math.cos(a)*rr;y=ABY+Math.sin(a)*rr;if(Math.hypot(x-P.x,y-P.y)>600)break}
-  const b={c:2,si:-1,lv,wp:'gun',kb:1,aby:1,fire:0,ft:0,x,y,z:zrnd(),vz:0,wz:0,vx:0,vy:0,ang:rnd(0,TAU),mh:ec.hull*hm,ms:100000,hull:ec.hull*hm,shield:100000,dm:1+.35*(lv-1),
+  const b={c:2,si:-1,lv,wp:'gun',kb:1,aby:1,fire:0,ft:0,x,y,z:zrnd(),vz:0,wz:0,vx:0,vy:0,ang:rnd(0,TAU),mh:ec.hull*hm,ms:5000,hull:ec.hull*hm,shield:5000,dm:1+.35*(lv-1),
     cd:rnd(0,1.5),aggro:5,alw:1,dir:Math.random()<.5?1:-1,sk:Math.random(),wx:x,wy:y,wt:0,hit:0,dead:false};
   E.push(b);KA=b;snd('warn');toast('Der Kepler-Titan ist in dieser Welle dabei!','#d070ff');ring(x,y,260,'#d070ff',b.z);
 }
@@ -871,7 +876,7 @@ function playerFire(dt){
     }
   }
   for(const it of st.D){
-    if(P.wt[it.id]>0)continue; const m=MT[it.t],dt2=nearestEnemy(P.x,P.y,m.rng,P.z);
+    if(P.wt[it.id]>0)continue; const m=MT[it.t],dt2=nearestEnemy(P.x,P.y,droneRng(),P.z);
     if(!dt2)continue; P.wt[it.id]=m.cd;snd('drone');
     const a=performance.now()/600+it.id;
     shot(P.x+Math.cos(a)*30,P.y+Math.sin(a)*30,dt2.e.x,dt2.e.y,620,dmgOf(it),'#7dff7a','p',1,0,null,P.z,dt2.e.z);
@@ -1025,8 +1030,8 @@ function loadSave(){
     newGame();Object.assign(P,{cls:d.cls,slots:d.slots,cargo:d.cargo,storage:d.storage,credits:d.credits,owned:d.owned,home:SYS[d.home]&&!SYS[d.home].ns?d.home:0});
     while(P.slots.length<SHIPS[P.cls].slots)P.slots.push(null);enforceLimits();
     while(P.owned.length<SHIPS.length)P.owned.push(false);BOSS.cd=d.bcd||0;if(BOSS.cd>0)BH=d.bh&&isFinite(d.bh.x)&&isFinite(d.bh.y)&&Math.hypot(d.bh.x-SYS[BOSSI].x,d.bh.y-SYS[BOSSI].y)<SYS[BOSSI].R+2000?{x:d.bh.x,y:d.bh.y}:bhPos();score=d.score||0;kills=d.kills||0;
-    if(d.sk&&typeof d.sk==='object'){skK={regen:+d.sk.regen||0,reactor:+d.sk.reactor||0,shield:+d.sk.shield||0,dmg:+d.sk.dmg||0,een:+d.sk.een||0};skSel=SK_N[d.ss]?d.ss:'regen'}
-    else{skK={regen:kills,reactor:kills,shield:0,dmg:0,een:0};skSel='regen'} /* alter Spielstand: beide Skills behalten ihre bisherige Stufe */
+    if(d.sk&&typeof d.sk==='object'){skK={regen:+d.sk.regen||0,reactor:+d.sk.reactor||0,shield:+d.sk.shield||0,dmg:+d.sk.dmg||0,een:+d.sk.een||0,range:+d.sk.range||0};skSel=SK_N[d.ss]?d.ss:'regen'}
+    else{skK={regen:kills,reactor:kills,shield:0,dmg:0,een:0,range:0};skSel='regen'} /* alter Spielstand: beide Skills behalten ihre bisherige Stufe */
     P.vo=d.vo&&typeof d.vo==='object'?d.vo:{};P.vr=VAR.includes(d.vr)?d.vr:'';uid=d.uid||1000;const s=SYS[P.home];P.x=s.sx+160;P.y=s.sy+160;fullRepair();return true}
   catch(e){return false}
 }
@@ -1604,18 +1609,61 @@ function render3D(){
     if(b.fl){const f=clamp(b.life/b.ml,0,1);bill(CELL.glow,b.x,9,b.y,b.r*1.8,[1,(80+150*f)/255,.12],.15+.45*f);bill(CELL.glow,b.x,9,b.y,b.r,[1,.92,.55],.15+.5*f);YO=0;continue}
     const c=hc(b.col),tx=b.x-b.vx*.05,tz=b.y-b.vy*.05;
     beam(b.x,9,b.y,tx,9-b.vz*.05,tz,b.r*3.4,c,.3);beam(b.x,9,b.y,tx,9-b.vz*.05,tz,b.r*1.2,c,1);beam(b.x,9,b.y,tx,9-b.vz*.05,tz,b.r*.45,W3,1);YO=0}
-  if(P.warp&&!P.dead){const an=Math.atan2(P.vy,P.vx),ln=1400,bx=P.x-Math.cos(an)*ln,bz=P.y-Math.sin(an)*ln,f=.7+.3*Math.sin(tmr*40);YO=P.z;
-    beam(P.x,9,P.y,bx,9,bz,60*f,[.3,.85,1],.25);beam(P.x,9,P.y,bx,9,bz,22*f,[.6,.95,1],.6);beam(P.x,9,P.y,bx,9,bz,6,W3,.9);bill(CELL.glow,P.x,9,P.y,70,[.5,.9,1],.7);YO=0}
+  if(P.warp&&!P.dead){
+    const an=Math.atan2(P.vy,P.vx),wm=inNeb()?10:(nearSpawn()==='e'?2:(SYS.some(s=>Math.hypot(P.x-s.x,P.y-s.y)<s.R)?50:100));
+    const strength=wm===100?1:wm===50?.62:wm===10?.3:.13;
+    const ln=1400*(.35+.65*strength),bx=P.x-Math.cos(an)*ln,bz=P.y-Math.sin(an)*ln;
+    const f=(.7+.3*Math.sin(tmr*(22+wm*.18)))*strength;YO=P.z;
+    /* Zentrale Warp-Aura und gerichtete Geschwindigkeitsschlieren */
+    beam(P.x,9,P.y,bx,9,bz,120*f,[.3,.85,1],.25*strength);
+    beam(P.x,9,P.y,bx,9,bz,44*f,[.6,.95,1],.6*strength);
+    beam(P.x,9,P.y,bx,9,bz,12*f,W3,.9*strength);
+    for(let i=0;i<Math.round(54*strength+6);i++){
+      const side=(i%2?1:-1)*(18+(i*37)%105);
+      const phase=((tmr*(.22+i%4*.035)+i*.173)%1+1)%1;
+      const along=ln*(.75-phase*1.5);
+      const sx=P.x+Math.cos(an)*along-Math.sin(an)*side,sy=P.y+Math.sin(an)*along+Math.cos(an)*side;
+      const len=(90+(i*29)%210)*(.35+.65*strength),ex=sx-Math.cos(an)*len,ey=sy-Math.sin(an)*len;
+      const pulse=.35+.65*Math.abs(Math.sin(tmr*(5+i%5)+i*1.7));
+      beam(sx,9,sy,ex,9,ey,2.4+4.4*strength,[.35,.78,1],pulse*.45*strength);
+    }
+    /* Dunkle Regenbogen-Schlieren auch vor dem Schiff in Flugrichtung */
+    const warpColors=[[.34,.035,.075],[.42,.12,.025],[.38,.29,.035],[.035,.27,.12],[.025,.16,.4],[.19,.055,.34]];
+    for(let i=0;i<Math.round(90*strength+9);i++){
+      const side=(i%2?1:-1)*(12+(i*31)%125);
+      const phase=((tmr*(.2+i%5*.028)+i*.137)%1+1)%1;
+      const ahead=ln*(.75-phase*1.5);
+      const sx=P.x+Math.cos(an)*ahead-Math.sin(an)*side;
+      const sy=P.y+Math.sin(an)*ahead+Math.cos(an)*side;
+      const len=(65+(i*43)%260)*(.3+.7*strength);
+      const ex=sx-Math.cos(an)*len,ey=sy-Math.sin(an)*len;
+      const pulse=.25+.75*Math.abs(Math.sin(tmr*(4+i%7)+i*2.1));
+      const col=warpColors[i%warpColors.length];
+      beam(sx,9,sy,ex,9,ey,1.5+2.8*strength,col,pulse*.62*strength);
+      if(i%4===0)beam(sx,9,sy,ex,9,ey,1.4+strength*1.6,[.32,.3,.38],pulse*.35*strength);
+    }
+    /* Kurze farbige Lichtfahnen direkt vor der Schiffsspitze */
+    for(let i=0;i<18;i++){
+      const phase=((tmr*.28+i/18)%1+1)%1;
+      const side=(i%6-2.5)*13,along=ln*(.7-phase*1.4);
+      const fx=P.x+Math.cos(an)*along-Math.sin(an)*side;
+      const fy=P.y+Math.sin(an)*along+Math.cos(an)*side;
+      const col=warpColors[i%warpColors.length];
+      beam(fx,9,fy,fx-Math.cos(an)*(95+strength*110),9,fy-Math.sin(an)*(95+strength*110),
+        (4.4+strength*5),col,(.35+.35*Math.sin(tmr*7+i))*strength);
+    }
+    bill(CELL.glow,P.x,9,P.y,70*strength,[.5,.9,1],.7*strength);YO=0
+  }
   for(const l of BL){const a0=clamp(l.life*5,0,1),p=l.pts,c=hc(l.col);
     for(let i=1;i<p.length;i++){const x0=p[i-1][0],z0=p[i-1][1],x1=p[i][0],z1=p[i][1],y0=10+(p[i-1][2]||0),y1=10+(p[i][2]||0);beam(x0,y0,z0,x1,y1,z1,18,c,a0*.28);beam(x0,y0,z0,x1,y1,z1,6,c,a0*.8);beam(x0,y0,z0,x1,y1,z1,1.8,W3,a0)}}
   for(const g of RG){const t=1-g.life/g.ml;ringG(g.x,g.y,g.max*(1-Math.pow(1-t,3)),3+(g.z||0),hc(g.col),Math.max(0,1-t))}
   for(const p of PT){const f=clamp(p.life/p.max,0,1);if(!vis(p.x,p.y,10,p.z))continue;bill(CELL.glow,p.x,6+(p.z||0),p.y,p.sz*(.5+.7*f)*2.2,hc(p.col),f)}
-  YO=0;{const lim=7000/Z;for(const n of NEB){if(Math.hypot(n.x-cam.x,n.y-cam.y)>n.r+lim)continue;for(const q of n.pf)if(Math.hypot(q.x-cam.x,q.y-cam.y)<lim+q.s)bill(CELL.glow,q.x,q.h,q.y,q.s*.9,n.tint,.15)}
+  YO=0;{const lim=7000/Z;for(const n of NEB){if(Math.hypot(n.x-cam.x,n.y-cam.y)>n.r+lim)continue;for(const q of n.pf)if(Math.hypot(q.x-cam.x,q.y-cam.y)<lim+q.s)bill(CELL.glow,q.x,q.h,q.y,q.s*.9,q.tint||n.tint,.15)}
     for(const n of SPNEB){if(Math.hypot(n.x-cam.x,n.y-cam.y)>n.r+lim)continue;for(const q of n.pf)if(Math.hypot(q.x-cam.x,q.y-cam.y)<lim+q.s)bill(CELL.glow,q.x,q.h,q.y,q.s*.9,q.tint,.13)}}
   flushSpr(ATLAS);
   /* Nebel-Schwaden: abgedunkelt, normal gemischt, mit Tiefentest (Schiffe davor bleiben sichtbar) */
   gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  {const lim=7000/Z;for(const n of NEB){if(Math.hypot(n.x-cam.x,n.y-cam.y)>n.r+lim)continue;for(const q of n.pf)if(Math.hypot(q.x-cam.x,q.y-cam.y)<lim+q.s)bill(CELL.glow,q.x,q.h,q.y,q.s,n.dark,Math.min(.85,q.a*1.4))}
+  {const lim=7000/Z;for(const n of NEB){if(Math.hypot(n.x-cam.x,n.y-cam.y)>n.r+lim)continue;for(const q of n.pf)if(Math.hypot(q.x-cam.x,q.y-cam.y)<lim+q.s)bill(CELL.glow,q.x,q.h,q.y,q.s,q.dark||n.dark,Math.min(.85,q.a*1.4))}
     for(const n of SPNEB){if(Math.hypot(n.x-cam.x,n.y-cam.y)>n.r+lim)continue;for(const q of n.pf)if(Math.hypot(q.x-cam.x,q.y-cam.y)<lim+q.s)bill(CELL.glow,q.x,q.h,q.y,q.s,q.dark,q.a)}}
   flushSpr(ATLAS);
   gl.depthMask(true);gl.disable(gl.BLEND);
@@ -1857,12 +1905,13 @@ function renderSkills(){
   const sh=l=>'+'+(SK_SH*l)+' Schild-Punkte maximal';
   const dm=l=>'+'+(SK_DMG*l)+' % Schaden für alle Waffen';
   const en=l=>'-'+(SK_EN*l)+' % Energieverbrauch aller Waffen';
-  const defs=[{t:'regen',f:rg},{t:'reactor',f:rc},{t:'shield',f:sh},{t:'dmg',f:dm},{t:'een',f:en}];
+  const ra=l=>'+'+(SK_RANGE*l)+' % Reichweite für alle Waffen';
+  const defs=[{t:'regen',f:rg},{t:'reactor',f:rc},{t:'shield',f:sh},{t:'dmg',f:dm},{t:'een',f:en},{t:'range',f:ra}];
   $('skl').innerHTML=defs.map(d=>{
     const l=skLvl(d.t),n=skK[d.t],nx=SK_T[l],on=skSel===d.t,col=CATC[d.t]||'#ff5a4a',
       cur=l?d.f(l):'Noch nicht freigeschaltet',
       nxt=nx!==undefined?'Stufe '+(l+1)+': '+d.f(l+1)+' · noch '+(nx-n)+' Abschüsse':'Höchste Stufe erreicht';
-    return '<div class="sk"><div class="badge" style="color:'+col+';border-color:'+col+'">'+(MT[d.t]?MT[d.t].ic:d.t==='een'?'V':'W')+'</div><div class="info"><div class="nm">'+SK_N[d.t]+'<em>STUFE '+l+' / 4</em></div>'
+    return '<div class="sk"><div class="badge" style="color:'+col+';border-color:'+col+'">'+(MT[d.t]?MT[d.t].ic:d.t==='een'?'V':d.t==='range'?'R':'W')+'</div><div class="info"><div class="nm">'+SK_N[d.t]+'<em>STUFE '+l+' / 4</em></div>'
       +'<div class="cur">'+cur+'</div><div class="ds">'+nxt+'</div>'
       +'<div class="pips">'+[1,2,3,4].map(i=>'<i'+(i<=l?' class="on"':'')+'></i>').join('')+'</div></div>'
       +'<button class="b sm'+(on?' pri':'')+'" data-sk="'+d.t+'" aria-pressed="'+on+'">'+(on?'ZÄHLT':'WÄHLEN')+'</button></div>';
