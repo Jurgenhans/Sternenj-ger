@@ -177,6 +177,11 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
 .empty-note{color:var(--dim);padding:10px 0;font-size:14px}
 .stf{padding-top:8px;display:flex;justify-content:center}
 #mapc{width:min(100%,640px,calc(100vh - 90px));aspect-ratio:1;background:#050a16;box-shadow:inset 0 0 0 1px var(--line)}
+/* Sicherheitsabfrage für ein neues Spiel: bewusst weit oben platzieren. */
+#newconfirm{position:absolute;z-index:20;top:max(7%,env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);width:min( min(92vw,520px), calc(100vw - 24px));box-sizing:border-box;padding:20px 18px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;background:linear-gradient(160deg,rgba(16,38,72,.98),rgba(9,14,36,.98));border:1px solid var(--cyan);box-shadow:0 0 28px rgba(56,217,255,.28),inset 0 0 24px rgba(56,217,255,.1);}
+#newconfirm[hidden]{display:none}
+#newconfirm h2{font-family:var(--f-d);font-size:clamp(19px,5vw,25px);letter-spacing:.08em;margin:0;color:var(--gold)}
+#newconfirm p{margin:0;color:var(--text);font-size:16px;line-height:1.4}
 </style>
 
 <canvas id="world"></canvas>
@@ -266,6 +271,11 @@ body.aby .ov{background:radial-gradient(ellipse at 50% 25%,rgba(110,14,24,.6),rg
 <div class="ov" id="pause" hidden><h2>PAUSE</h2><button class="b pri" id="bresume">Weiter</button></div>
 <div class="ov" id="dead" hidden><h2 style="color:var(--danger)">SCHIFF ZERSTÖRT</h2><p>Fracht und 15 % der Credits sind verloren. Eingebaute Module bleiben erhalten.</p><button class="b pri" id="brespawn">An der Station neu starten</button></div>
 <div class="ov" id="map" hidden><canvas id="mapc" width="640" height="640"></canvas><button class="b" id="bmapx">Schließen</button></div>
+<div id="newconfirm" class="panel" role="dialog" aria-modal="true" aria-labelledby="newconfirmtitle" hidden>
+  <h2 id="newconfirmtitle">NEUES SPIEL STARTEN?</h2>
+  <p>Bist du sicher? Dein bisheriger Spielstand wird gelöscht und kann nicht wiederhergestellt werden.</p>
+  <div class="btnrow"><button class="b pri" id="bnewyes">Ja, neues Spiel</button><button class="b" id="bnewno">Abbrechen</button></div>
+</div>
 <div class="ov" id="station" hidden>
   <div class="sth"><h2 id="stname">STATION</h2><span id="stcred"></span></div>
   <div class="tabs" id="tabs">
@@ -2121,7 +2131,10 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)setPause(tr
 $('bfire').onclick=toggleFire;$('radarbox').onclick=()=>setMap(true);$('radarbox').onkeydown=e=>{if(e.key==='Enter')setMap(true)};$('bmapx').onclick=()=>setMap(false);$('map').onclick=e=>{if(e.target.id==='map')setMap(false)};
 $('bsound').onclick=toggleSound;setSoundBtn();$('bctrl').onclick=toggleCtrl;setCtrlBtn();$('bset').onclick=()=>setSettings(true);$('bsetx').onclick=()=>setSettings(false);$('settings').onclick=e=>{if(e.target.id==='settings')setSettings(false)};$('bskill').onclick=()=>setSkills(true);$('bskx').onclick=()=>setSkills(false);$('skl').onclick=e=>{const b=e.target.closest('[data-sk]');if(b){skSel=b.dataset.sk;renderSkills()}};$('skills').onclick=e=>{if(e.target.id==='skills')setSkills(false)};
 $('bcloak').onclick=useCloak;$('bwarp').onclick=useWarp;$('bdock').onclick=tryDock;$('bpause').onclick=e=>{e.stopPropagation();setPause(true)};$('bresume').onclick=()=>setPause(false);
-$('bnew').onclick=()=>start(false);$('bcont').onclick=()=>start(true);$('bundock').onclick=closeStation;$('brespawn').onclick=respawn;
+$('bnew').onclick=()=>{if(hasSave()){$('newconfirm').hidden=false;$('bnewyes').focus()}else start(false)};
+$('bnewyes').onclick=()=>{try{localStorage.removeItem(SAVE)}catch(e){}$('newconfirm').hidden=true;start(false)};
+$('bnewno').onclick=()=>{$('newconfirm').hidden=true};
+$('bcont').onclick=()=>start(true);$('bundock').onclick=closeStation;$('brespawn').onclick=respawn;
 $('tabs').onclick=e=>{const t=e.target.closest('.tab');if(t){tab=t.dataset.tab;yardSel=-1;$('stbody').scrollTop=0;renderStation()}};
 $('stbody').onclick=e=>{const b=e.target.closest('[data-a]');if(b&&!b.disabled)stAction(b.dataset.a,b.dataset)};
 function bindZ(id,dir){const b=$(id);
