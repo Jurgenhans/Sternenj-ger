@@ -1235,6 +1235,64 @@ function flushSpr(tex){
   gl.bindBuffer(gl.ARRAY_BUFFER,DS.b);gl.bufferData(gl.ARRAY_BUFFER,DS.a.subarray(0,DS.n*9),gl.STREAM_DRAW);
   gl.vertexAttribPointer(0,3,gl.FLOAT,false,36,0);gl.vertexAttribPointer(1,2,gl.FLOAT,false,36,12);gl.vertexAttribPointer(2,4,gl.FLOAT,false,36,20);
   gl.drawArrays(gl.TRIANGLES,0,DS.n);DS.n=0}
+/* --- Himmels-Würfel: Nebel (Cubemap, einmal berechnet) und Sterne auf allen sechs Seiten, folgt der Kamera.
+   So ist der Hintergrund aus jeder Blickrichtung da, auch bei der freien Kamera von unten, oben und flach. --- */
+const SKYP=prog('attribute vec3 aP;uniform mat4 uVP;uniform vec3 uC;varying vec3 vD;void main(){vD=aP;gl_Position=uVP*vec4(uC+aP*8000.,1.);}',
+ 'precision mediump float;varying vec3 vD;uniform samplerCube uT;uniform vec3 uBase;uniform vec3 uA;uniform vec3 uB;uniform vec3 uD;void main(){vec3 t=textureCube(uT,normalize(vD)).rgb;float a=smoothstep(.42,.82,t.r),b=smoothstep(.46,.86,t.g),c=smoothstep(.5,.9,t.b);gl_FragColor=vec4(uBase+uA*a*.62+uB*b*.5+uD*c*.42,1.);}',['aP']);
+const STP=prog('attribute vec4 aS;uniform mat4 uVP;uniform vec3 uC;uniform float uPx;uniform float uAby;varying vec3 vC;void main(){gl_Position=uVP*vec4(uC+aS.xyz*7600.,1.);gl_PointSize=uPx*(1.6+aS.w*2.2);float h=fract(aS.w*7.31);vec3 c=h<.5?vec3(.85,.92,1.):h<.8?vec3(1.,.9,.7):vec3(.75,.82,1.);c=mix(c,vec3(1.,.5,.45),uAby);vC=c*(.5+aS.w*.5);}',
+ 'precision mediump float;varying vec3 vC;void main(){float a=smoothstep(.5,.15,length(gl_PointCoord-.5));gl_FragColor=vec4(vC,a);}',['aS']);
+const SKY={tex:null,ready:false,ms:0,vb:gl.createBuffer(),sb:gl.createBuffer(),sn:2600};
+const SKY_MN={base:[.006,.01,.03],a:[.43,.2,.82],b:[.12,.32,.95],d:[.78,.16,.58]},SKY_AB={base:[.02,.002,.006],a:[.62,.05,.1],b:[.42,.03,.2],d:[.7,.2,.08]};
+(function(){
+  const c=[-1,-1,-1, 1,-1,-1, 1,1,-1, -1,-1,-1, 1,1,-1, -1,1,-1,  -1,-1,1, 1,-1,1, 1,1,1, -1,-1,1, 1,1,1, -1,1,1,
+    -1,-1,-1, -1,1,-1, -1,1,1, -1,-1,-1, -1,1,1, -1,-1,1,  1,-1,-1, 1,1,-1, 1,1,1, 1,-1,-1, 1,1,1, 1,-1,1,
+    -1,-1,-1, 1,-1,-1, 1,-1,1, -1,-1,-1, 1,-1,1, -1,-1,1,  -1,1,-1, 1,1,-1, 1,1,1, -1,1,-1, 1,1,1, -1,1,1];
+  gl.bindBuffer(gl.ARRAY_BUFFER,SKY.vb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(c),gl.STATIC_DRAW);
+  const r=mulberry(21),a=new Float32Array(SKY.sn*4);
+  for(let i=0;i<SKY.sn;i++){const z=r()*2-1,t=r()*TAU,q=Math.sqrt(1-z*z);a[i*4]=q*Math.cos(t);a[i*4+1]=z;a[i*4+2]=q*Math.sin(t);a[i*4+3]=Math.pow(r(),2.2)}
+  gl.bindBuffer(gl.ARRAY_BUFFER,SKY.sb);gl.bufferData(gl.ARRAY_BUFFER,a,gl.STATIC_DRAW);
+})();
+/* 3D-Rauschen: gleiche Funktion für alle sechs Seiten, deshalb keine Nähte an den Würfelkanten */
+function skyH(x,y,z){let h=Math.imul(x,374761393)^Math.imul(y,668265263)^Math.imul(z,1442695041);h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296}
+function skyN(x,y,z){const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z);let fx=x-xi,fy=y-yi,fz=z-zi;fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);
+  const a=skyH(xi,yi,zi),b=skyH(xi+1,yi,zi),c=skyH(xi,yi+1,zi),d=skyH(xi+1,yi+1,zi),e=skyH(xi,yi,zi+1),f=skyH(xi+1,yi,zi+1),g=skyH(xi,yi+1,zi+1),h=skyH(xi+1,yi+1,zi+1);
+  const x1=a+(b-a)*fx,x2=c+(d-c)*fx,x3=e+(f-e)*fx,x4=g+(h-g)*fx,y1=x1+(x2-x1)*fy,y2=x3+(x4-x3)*fy;return y1+(y2-y1)*fz}
+function skyF(x,y,z,o){let a=.5,s=0,f=1;for(let i=0;i<o;i++){s+=a*skyN(x*f,y*f,z*f);f*=2.03;a*=.5}return s}
+function skyGen(){
+  const N=256,t0=performance.now(),tex=gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP,tex);
+  for(const k of [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_CUBE_MAP,k,gl.LINEAR);
+  for(const k of [gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T])gl.texParameteri(gl.TEXTURE_CUBE_MAP,k,gl.CLAMP_TO_EDGE);
+  for(let f=0;f<6;f++)gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X+f,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array(4));
+  SKY.tex=tex;let f=0;
+  const step=()=>{ /* eine Seite pro Schritt, damit das Spiel nicht hängt */
+    const d=new Uint8Array(N*N*4);
+    for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+      const u=2*(x+.5)/N-1,v=2*(y+.5)/N-1;let dx,dy,dz;
+      switch(f){case 0:dx=1;dy=-v;dz=-u;break;case 1:dx=-1;dy=-v;dz=u;break;case 2:dx=u;dy=1;dz=v;break;case 3:dx=u;dy=-1;dz=-v;break;case 4:dx=u;dy=-v;dz=1;break;default:dx=-u;dy=-v;dz=-1}
+      const l=Math.hypot(dx,dy,dz);dx/=l;dy/=l;dz/=l;const s=2.3,i=(y*N+x)*4;
+      d[i]=skyF(dx*s+3.1,dy*s+7.7,dz*s+1.3,4)*270;d[i+1]=skyF(dx*s*1.3+11.2,dy*s*1.3+5.5,dz*s*1.3+9.1,3)*270;d[i+2]=skyF(dx*s*1.7+21,dy*s*1.7+2.4,dz*s*1.7+13,3)*270;d[i+3]=255;
+    }
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP,tex);gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X+f,0,gl.RGBA,N,N,0,gl.RGBA,gl.UNSIGNED_BYTE,d);
+    if(++f<6)setTimeout(step,0);else{SKY.ready=true;SKY.ms=Math.round(performance.now()-t0)}
+  };
+  setTimeout(step,0);
+}
+skyGen();
+function drawSkyCube(aby){
+  if(!SKY.ready)return;
+  const pal=aby?SKY_AB:SKY_MN;
+  gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.depthMask(false);
+  gl.useProgram(SKYP.p);gl.uniformMatrix4fv(SKYP.u.uVP,false,VP);gl.uniform3f(SKYP.u.uC,EYE[0],EYE[1],EYE[2]);
+  gl.uniform3fv(SKYP.u.uBase,pal.base);gl.uniform3fv(SKYP.u.uA,pal.a);gl.uniform3fv(SKYP.u.uB,pal.b);gl.uniform3fv(SKYP.u.uD,pal.d);
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_CUBE_MAP,SKY.tex);gl.uniform1i(SKYP.u.uT,0);
+  gl.disableVertexAttribArray(1);gl.disableVertexAttribArray(2);gl.enableVertexAttribArray(0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,SKY.vb);gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);gl.drawArrays(gl.TRIANGLES,0,36);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+  gl.useProgram(STP.p);gl.uniformMatrix4fv(STP.u.uVP,false,VP);gl.uniform3f(STP.u.uC,EYE[0],EYE[1],EYE[2]);gl.uniform1f(STP.u.uPx,dpr);gl.uniform1f(STP.u.uAby,aby?1:0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,SKY.sb);gl.vertexAttribPointer(0,4,gl.FLOAT,false,0,0);gl.drawArrays(gl.POINTS,0,SKY.sn);
+  gl.disable(gl.BLEND);
+}
 function drawSky(aby){
   gl.useProgram(TP2.p);gl.uniformMatrix4fv(TP2.u.uVP,false,VP);gl.uniform2f(TP2.u.uCam,cam.x,cam.y);gl.uniform1f(TP2.u.uCz,cam.z);gl.uniform1f(TP2.u.uTile,14000);gl.uniform1f(TP2.u.uPx,dpr);gl.uniform1f(TP2.u.uAby,aby?1:0);
   gl.disableVertexAttribArray(1);gl.disableVertexAttribArray(2);gl.enableVertexAttribArray(0);
@@ -1370,8 +1428,9 @@ function wallRect(){
 function render3D(){
   setCam();const aby=WORLD==='abyss';
   gl.viewport(0,0,cv.width,cv.height);gl.clearColor(aby?.024:.016,aby?.004:.024,aby?.008:.06,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.disable(gl.CULL_FACE);drawSkyCube(aby);
   gl.disable(gl.CULL_FACE);gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE);gl.depthMask(false);
-  drawSky(aby);
+  if(!SKY.ready)drawSky(aby); /* flache Ebene nur als Platzhalter, bis der Himmels-Würfel berechnet ist */
   gl.disable(gl.BLEND);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);
   setLit();
   const main=WORLD==='main';
