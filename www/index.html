@@ -326,8 +326,8 @@ function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a
 const SYS=[
   /* System 1: 9 Planeten, eine Station, Asteroiden. System 2: 15 Planeten, Station an jedem 2. Planeten, goldene Stufe-V-Module.
      System 3: das kleine Wächter-System (Boss, Schwarzes Loch, Abgrund). pz: Planetensystem, orb: [erster Orbit, Abstand] in SC-Einheiten, psz: [min, Streuung] der Planetengröße */
-  {name:'HELIOS',x:2000,y:13500,lv:1,col:'#ffd27a',fl:0,bo:0,k:SC,pz:1,np:9,orb:[230,150],psz:[20,22]},
-  {name:'NEMESIS',x:8800,y:7600,lv:10,col:'#ff6a6a',fl:.25,bo:.25,k:SC,pz:1,np:15,orb:[260,125],psz:[14,18]},
+  {name:'HELIOS',x:3000,y:13500,lv:1,col:'#ffd27a',fl:0,bo:0,k:SC,pz:1,np:9,orb:[460,300],psz:[20,22]},
+  {name:'NEMESIS',x:8000,y:7000,lv:10,col:'#ff6a6a',fl:.25,bo:.25,k:SC,pz:1,np:15,orb:[520,250],psz:[14,18]},
   {name:'ZENITH',x:11800,y:2800,lv:8,col:'#f2f58a',fl:.5,bo:.5,k:1}
 ];
 const BOSSI=2, ALI=-1, KBI=-1; /* ALI/KBI: Alien-System und Kepler-Titan gibt es nicht mehr */
@@ -338,6 +338,8 @@ const PZ1=[{lv:1,mix:[9,1,0]},{lv:2,mix:[8,3,0]},{lv:3,mix:[21,12,3]},{lv:4,mix:
 const ROM=['I','II','III','IV','V'];
 const rng0=mulberry(77), AST=[];
 const PLN=[], STN=[]; /* PLN: alle landbaren Planeten samt NPC-Zone, STN: alle Stationen */
+/* Dunkle Planetenfarben (multiplizieren die Oberflächentextur): dunkelrot, grün, schwarz, grau, lila, blau */
+const PLC=[[.62,.08,.06],[.12,.45,.14],[.09,.09,.11],[.40,.41,.43],[.42,.12,.58],[.10,.22,.70]];
 const romanN=n=>{let s='';for(const [v,t] of [[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']])while(n>=v){s+=t;n-=v}return s};
 function mkAst(cx,cy,r0,r1,n){for(let i=0;i<n;i++){const a=rng0()*TAU,r=r0+rng0()*(r1-r0),sz=5+rng0()*18,pts=[];const m=6+rint(0,3);
   for(let k=0;k<m;k++)pts.push([Math.cos(k/m*TAU)*sz*(.7+rng0()*.5),Math.sin(k/m*TAU)*sz*(.7+rng0()*.5)]);
@@ -346,33 +348,48 @@ SYS.forEach((s,i)=>{
   s.x*=FS;s.y*=FS;s.R=1150*s.k;s.tm=3;s.ft=4+Math.random()*5;
   if(s.pz){
     const pr=mulberry(1000+i*77),n=s.np;s.pl=[];
-    s.R=(s.orb[0]+s.orb[1]*(n-1)+260)*SC;
+    const R1=s.orb[0]+s.orb[1]*(n-1);
+    s.R=(R1+520)*SC;
+    const zs=[];
     for(let k=0;k<n;k++){
       const o=.6+k*2.39996+i*1.1,r=(s.orb[0]+s.orb[1]*k)*SC,sz=(s.psz[0]+pr()*s.psz[1])*SC,hue=Math.floor(pr()*360);
+      const ci=(k+i*3)%6,jit=.85+pr()*.3,tint=PLC[ci].map(v=>Math.min(1,v*jit));
       const def=i===0?PZ1[k]:{lv:10+Math.round(k*.75),mix:[Math.max(4,14-Math.round(k*.6)),12,4+Math.round(k*.6)],fl:.25,bo:.25,bf:1.5,gold:1};
-      const x=s.x+Math.cos(o)*r,y=s.y+Math.sin(o)*r,r0=sz*1.15+300,r1=sz*1.15+2200;
-      const z={si:i,k,name:s.name+' '+romanN(k+1),x,y,sz,hue,lv:def.lv,bf:def.bf||1,fl:def.fl||0,bo:def.bo||0,al:def.al||0,gold:def.gold||0,
-        mix:def.mix.map(v=>v*(i===0?3:1)),r0,r1,wr:r1+1200,tm:3,n:0,st:-1};
-      z.max=z.mix[0]+z.mix[1]+z.mix[2];
-      s.pl.push({o,r,sz,sp:0,hue,zi:PLN.length});PLN.push(z);
+      const x=s.x+Math.cos(o)*r,y=s.y+Math.sin(o)*r;
+      const z={si:i,k,name:s.name+' '+romanN(k+1),x,y,sz,hue,ci,lv:def.lv,bf:def.bf||1,fl:def.fl||0,bo:def.bo||0,al:def.al||0,gold:def.gold||0,
+        mix:def.mix.map(v=>v*(i===0?3:1)),tm:3,n:0,st:-1,fx:((k*7+i)%5)<2};
+      z.max=z.mix[0]+z.mix[1]+z.mix[2];z.r0=300;z.r1=2200+Math.round(Math.sqrt(z.max)*70);z.wr=z.r1+1200;
+      s.pl.push({o,r,sz,sp:0,hue,zi:PLN.length,tint,gl:tint.map(v=>Math.min(1,v*1.7+.05))});PLN.push(z);zs.push(z);
     }
-    s.max=PLN.filter(z=>z.si===i).reduce((p,z)=>p+z.max,0);
-    const zs=PLN.filter(z=>z.si===i);
+    s.max=zs.reduce((p,z)=>p+z.max,0);
     if(i===0){ /* eine Station zwischen dem 1. und 2. Orbit, seitlich vom 1. Planeten */
       const rs=(s.orb[0]+s.orb[1]*.5)*SC,an=s.pl[0].o+.9;
       s.sx=s.x+Math.cos(an)*rs;s.sy=s.y+Math.sin(an)*rs;
       STN.push({name:s.name,sx:s.sx,sy:s.sy,lv:4,si:i,pi:-1});
-    }else{ /* Station an jedem 2. Planeten (2., 4., 6. ...), außen vor dem NPC-Ring des Planeten */
-      zs.forEach((z,k)=>{if(k%2!==1)return;const o=s.pl[k].o,d=z.r1+1100,sx=z.x+Math.cos(o)*d,sy=z.y+Math.sin(o)*d;
+    }else{ /* Station an jedem 2. Planeten (2., 4., 6. ...), direkt am Planeten */
+      zs.forEach((z,k)=>{if(k%2!==1)return;const o=s.pl[k].o,d=z.sz*1.15+2500,sx=z.x+Math.cos(o)*d,sy=z.y+Math.sin(o)*d;
         z.st=STN.length;STN.push({name:z.name,sx,sy,lv:4,si:i,pi:PLN.indexOf(z)})});
       s.sx=STN.find(t=>t.si===i).sx;s.sy=STN.find(t=>t.si===i).sy;
     }
     /* Asteroiden: Hauptgürtel, Außengürtel und kleine Felder an jedem Planeten */
-    const R1=s.orb[0]+s.orb[1]*(n-1);
-    const belts=i===0?[4.5]:[4.5,9.5];
-    for(const bk of belts){const rm=(s.orb[0]+s.orb[1]*bk)*SC,wd=s.orb[1]*.3*SC;mkAst(s.x,s.y,rm-wd,rm+wd,i===0?900:1100)}
-    mkAst(s.x,s.y,(R1+70)*SC,(R1+200)*SC,i===0?500:700);
+    const bl=[];for(const bk of (i===0?[4.5]:[4.5,9.5]))bl.push({rm:(s.orb[0]+s.orb[1]*bk)*SC,wd:s.orb[1]*.3*SC});
+    bl.push({rm:(R1+270)*SC,wd:130*SC});
+    bl.forEach((bb,bi)=>mkAst(s.x,s.y,bb.rm-bb.wd,bb.rm+bb.wd,bi<bl.length-1?(i===0?1500:1800):(i===0?800:1000)));
     for(const z of zs)mkAst(z.x,z.y,z.sz*1.4+1500,z.sz*1.4+5000,i===0?40:30);
+    /* NPC-Spawnpunkte: weit weg von Planeten, Planeten-Asteroiden, Gürteln, Stationen und anderen Spawnpunkten */
+    zs.forEach((z,k)=>{
+      let best=null,bm=-1e18;
+      search:for(const mul of [1,1.35,1.7,2.1])for(const dl of [1.2,-1.2,1.7,-1.7,2.2,-2.2,2.7,-2.7,3.1]){
+        const an=s.pl[k].o+dl,dd=(z.sz*1.4+5000+z.r1+2500)*mul,cx=z.x+Math.cos(an)*dd,cy=z.y+Math.sin(an)*dd,rc=Math.hypot(cx-s.x,cy-s.y);
+        let m=s.R-4000-z.r1-rc;
+        for(const bb of bl)m=Math.min(m,Math.abs(rc-bb.rm)-bb.wd-z.r1-3000);
+        for(const q of zs){if(q===z)continue;m=Math.min(m,Math.hypot(cx-q.x,cy-q.y)-(q.sz*1.4+5000)-z.r1-1500);if(q.cx!==undefined)m=Math.min(m,Math.hypot(cx-q.cx,cy-q.cy)-q.r1-z.r1-2500)}
+        for(const t of STN)m=Math.min(m,Math.hypot(cx-t.sx,cy-t.sy)-z.r1-1500);
+        if(m>bm){bm=m;best={cx,cy}}
+        if(m>0)break search;
+      }
+      z.cx=best.cx;z.cy=best.cy;z.sm=bm;
+    });
   }else{
     const a=rng0()*TAU;s.sx=s.x+Math.cos(a)*520*s.k;s.sy=s.y+Math.sin(a)*520*s.k;s.max=MIX[i].reduce((p,c)=>p+c,0);
     STN.push({name:s.name,sx:s.sx,sy:s.sy,lv:s.lv,si:i,pi:-1});
@@ -399,14 +416,13 @@ NEB.forEach((n,i)=>{n.r=.8*1150*SC*(n.size||1);n.k=1;n.R=n.r;n.max=n.mix[0]+n.mi
     else n.pf.push({x:n.x+Math.cos(a)*d,y:n.y+Math.sin(a)*d,h:-500+r()*1200,s:n.r*(.03+.05*r()),a:.3+.25*r()})}});
 /* Nebel an den NPC-Spawnpunkten: Punkt 1 bleibt klar, nur Punkt 2 erhält alle drei Nebelfarben gemischt. */
 const SPNEB=[];
-SYS.forEach((s,i)=>{
-  if(!s.sp||!s.sp[1])return;
-  const center=s.sp[1],r=mulberry(7200+i),cloud={x:center.x,y:center.y,r:3200,pf:[]};
-  const colors=[NEB[0],NEB[1],NEB[2]];
+/* Gemischter Nebel (rot, blau, grün) an etwa 40 % der NPC-Spawnpunkte (Planeten mit fx) */
+PLN.forEach((z,j)=>{
+  if(!z.fx)return;
+  const r=mulberry(7200+j),cloud={x:z.cx,y:z.cy,r:z.r1+900,pf:[]},colors=[NEB[0],NEB[1],NEB[2]];
   for(let k=0;k<700;k++){
-    const color=colors[k%3],a=r()*TAU,d=cloud.r*Math.sqrt(r())*.92;
-    cloud.pf.push({x:center.x+Math.cos(a)*d,y:center.y+Math.sin(a)*d,h:-420+r()*900,
-      s:90+150*r(),a:.2+.15*r(),tint:color.tint,dark:color.dark});
+    const color=colors[k%3],an=r()*TAU,d=cloud.r*Math.sqrt(r())*.92;
+    cloud.pf.push({x:z.cx+Math.cos(an)*d,y:z.cy+Math.sin(an)*d,h:-420+r()*900,s:90+150*r(),a:.2+.15*r(),tint:color.tint,dark:color.dark});
   }
   SPNEB.push(cloud);
 });
@@ -416,6 +432,9 @@ SYS.forEach((s,i)=>{
   const RT=[[.17,.14,.21],[.12,.15,.18],[.2,.13,.13],[.13,.13,.19]],CT=[[.13,.06,.26],[.04,.17,.18],[.25,.05,.1],[.06,.1,.28],[.05,.2,.11]];
   for(const q of pts)for(let i=0;i<70;i++){const a=r()*TAU,d=140+Math.sqrt(r())*2300,cr=r()<.35,sz=cr?12+r()*28:10+r()*35;
     AST.push({x:q.x+Math.cos(a)*d,y:q.y+Math.sin(a)*d,sz,pts:[],rot:r()*TAU,d:r()>.5?1:-1,h:(r()-.5)*700,cr,t:cr?CT[Math.floor(r()*CT.length)]:RT[Math.floor(r()*RT.length)]})}
+  /* viele Asteroiden und Kristalle an den Spawnpunkten mit Nebel */
+  for(const z of PLN)if(z.fx)for(let i=0;i<300;i++){const a=r()*TAU,d=140+Math.sqrt(r())*(z.r1+800),cr=r()<.35,sz=cr?12+r()*28:10+r()*35;
+    AST.push({x:z.cx+Math.cos(a)*d,y:z.cy+Math.sin(a)*d,sz,pts:[],rot:r()*TAU,d:r()>.5?1:-1,h:(r()-.5)*700,cr,t:cr?CT[Math.floor(r()*CT.length)]:RT[Math.floor(r()*RT.length)]})}
 })();
 /* ---------- Schiffe & Module ---------- */
 const SHIPS=[
@@ -457,7 +476,9 @@ const catCol=t=>CATC[t]||'#9aa7b4';
 const VAR=['laser','plasma','rail','missile','flame','bolt','drone'],VBON=1.2;
 const vPrice=i=>Math.round(Math.max(SHIPS[i].price,2000)*1.5);
 const dmgOf=it=>MT[it.t].dmg*TS[it.tier-1]*(1+(it.up||0)/100)*(1+SK_DMG*skLvl('dmg')/100)*(1+(P&&P.st?P.st.amp||0:0)/100)*(P&&P.vr===it.t?VBON:1);
-const nameOf=it=>MT[it.t].n+' '+ROM[it.tier-1]+(it.up?' +'+it.up+'%':'');
+const nameOf=it=>MT[it.t].n+' '+ROM[it.tier-1]+(it.up?' Lv.'+it.up:'');
+/* Upgrade-Stufe 0 bis 100: jede Stufe +1 % Wirkung (Triebwerke +3 %); gilt für alle Module der Stufe IV und V */
+const upm=it=>1+(it.up||0)/100,pctOf=it=>Math.round(MT[it.t].pct[it.tier-1]*upm(it)*10)/10,dmpOf=it=>MT.damper.pct[it.tier-1]*upm(it);
 const price=it=>Math.round(MT[it.t].price*TP[it.tier-1]);
 const wEn=it=>MT[it.t].en*(1+(TS[it.tier-1]-1)*.5)*(1-SK_EN*skLvl('een')/100)*(1-(P&&P.st?P.st.eco||0:0)/100);
 const skRangeMult=()=>1+SK_RANGE*skLvl('range')/100;
@@ -470,15 +491,15 @@ function describe(it){
   if(m.c==='w')return `Schaden ${Math.round(m.dmg*k)} · ${(1/m.cd).toFixed(1).replace('.',',')}/s · ${Math.round(wEn(it))} Energie`;
   if(m.c==='d')return `Autoschuss ${Math.round(m.dmg*k)} · kostet keine Energie`;
   switch(it.t){
-    case 'eco':return '-'+m.pct[it.tier-1]+' % Energieverbrauch aller Waffen · bis zu 2 Module addieren sich';
-    case 'amp':return '+'+m.pct[it.tier-1]+' % Schaden auf alle ausgerüsteten Waffen · bis zu 2 Module addieren sich';
-    case 'slow':return 'Gegner im Umkreis '+Math.round(wRng(it))+' (wie Flammenwerfer) sind '+m.pct[it.tier-1]+' % langsamer · nur 1 Modul';
-    case 'damper':return '-'+m.pct[it.tier-1]+' % Schaden auf Schild und Struktur · max. 3 Module, zusammen höchstens 95 %';
+    case 'eco':return '-'+pctOf(it)+' % Energieverbrauch aller Waffen · bis zu 2 Module addieren sich';
+    case 'amp':return '+'+pctOf(it)+' % Schaden auf alle ausgerüsteten Waffen · bis zu 2 Module addieren sich';
+    case 'slow':return 'Gegner im Umkreis '+Math.round(wRng(it))+' (wie Flammenwerfer) sind '+Math.min(95,pctOf(it))+' % langsamer · nur 1 Modul';
+    case 'damper':return '-'+pctOf(it)+' % Schaden auf Schild und Struktur · max. 3 Module, zusammen höchstens 95 %';
     case 'shield':return `+${Math.round(m.val*k)} Schild`;
     case 'armor':return `+${Math.round(m.val*k)} Struktur`;
     case 'regen':return `+${(m.val*k).toFixed(1).replace('.',',')} Schild pro Sekunde, im Kampf die Hälfte · bis zu 10 Module addieren sich`;
     case 'reactor':return `+${Math.round(m.val*k)} Energie, +${(m.er*k).toFixed(1).replace('.',',')}/s`;
-    case 'engine':return `+${Math.round(m.val*TS[it.tier-1]+(it.up||0))} % Tempo`;
+    case 'engine':return `+${Math.round(m.val*TS[it.tier-1]+(it.up||0)*3)} % Tempo`;
     case 'cloak':return `${Math.round(m.dur+k*1.5)} s Tarnung, ${m.cdn} s Pause`;
   }
 }
@@ -520,16 +541,16 @@ function enforceLimits(){const c={};P.slots.forEach((it,i)=>{if(!it)return;c[it.
 function stats(){
   const s=SHIPS[P.cls]; const st={sh:s.shield,hu:s.hull,en:s.energy,sp:s.spd,sr:s.sreg,er:s.ereg,W:[],D:[],cloak:null,red:0,rg:0,amp:0,slow:0,slowR:0,eco:0};
   const rgl=[];
-  for(const it of P.slots){ if(!it)continue; const m=MT[it.t],k=TS[it.tier-1];
+  for(const it of P.slots){ if(!it)continue; const m=MT[it.t],k=TS[it.tier-1],um=upm(it);
     if(m.c==='w')st.W.push(it); else if(m.c==='d')st.D.push(it);
-    else if(it.t==='shield')st.sh+=m.val*k; else if(it.t==='armor')st.hu+=m.val*k;
-    else if(it.t==='reactor'){st.en+=m.val*k;st.er+=m.er*k}
-    else if(it.t==='regen')rgl.push(m.val*k); else if(it.t==='engine')st.sp*=1+(m.val*k+(it.up||0))/100;
+    else if(it.t==='shield')st.sh+=m.val*k*um; else if(it.t==='armor')st.hu+=m.val*k*um;
+    else if(it.t==='reactor'){st.en+=m.val*k*um;st.er+=m.er*k*um}
+    else if(it.t==='regen')rgl.push(m.val*k*um); else if(it.t==='engine')st.sp*=1+(m.val*k+(it.up||0)*3)/100;
     else if(it.t==='cloak')st.cloak=it;
-    else if(it.t==='damper')st.red=Math.min(95,st.red+m.pct[it.tier-1]);
-    else if(it.t==='amp')st.amp+=m.pct[it.tier-1];
-    else if(it.t==='eco')st.eco+=m.pct[it.tier-1];
-    else if(it.t==='slow'&&m.pct[it.tier-1]>st.slow){st.slow=m.pct[it.tier-1];st.slowR=wRng(it)}
+    else if(it.t==='damper')st.red=Math.min(95,st.red+dmpOf(it));
+    else if(it.t==='amp')st.amp+=pctOf(it);
+    else if(it.t==='eco')st.eco=Math.min(90,st.eco+pctOf(it));
+    else if(it.t==='slow'&&Math.min(95,pctOf(it))>st.slow){st.slow=Math.min(95,pctOf(it));st.slowR=wRng(it)}
   }
   rgl.sort((a,b)=>b-a);st.rg=rgl.slice(0,10).reduce((a,b)=>a+b,0);
   const sg=skLvl('regen'),se=skLvl('reactor');
@@ -578,7 +599,7 @@ function spawnZ(zi,c,any){
   if(z.al)c+=4;
   const ec=EC[c],lv=z.lv,hm=1+.6*(lv-1),bf=z.bf;let pos=null;
   for(let t=0;t<100;t++){
-    const a=rnd(0,TAU),r=rnd(z.r0,z.r1),x=z.x+Math.cos(a)*r,y=z.y+Math.sin(a)*r;
+    const a=rnd(0,TAU),r=rnd(z.r0,z.r1),x=z.cx+Math.cos(a)*r,y=z.cy+Math.sin(a)*r;
     if(!any&&P&&Math.hypot(x-P.x,y-P.y)<665)continue;
     if(STN.some(s=>Math.hypot(x-s.sx,y-s.sy)<400))continue;
     pos={x,y};break;
@@ -1039,7 +1060,7 @@ const SPAWN_R=990,WARP_STOP=SPAWN_R*2.5; /* Spawnbereich der Gegner (Radius) und
 function nearSpawn(){
   // Nur die unmittelbare Stations-/Andockzone sperrt Warp.
   for(const s of STN)if(Math.hypot(P.x-s.sx,P.y-s.sy)<290)return 's';
-  for(const z of PLN)if(Math.hypot(P.x-z.x,P.y-z.y)<z.wr)return 'e';
+  for(const z of PLN)if(Math.hypot(P.x-z.cx,P.y-z.cy)<z.wr)return 'e';
   // Wächter-System ohne Planeten-Zonen: Spawn um das Zentrum.
   for(const s of SYS){
     if(s.pz)continue;
@@ -1060,7 +1081,7 @@ function useWarp(){
 }
 function useCloak(){
   if(!P||P.dead||mode!=='play'||!P.st.cloak||P.cloakCd>0)return;
-  const it=P.st.cloak,m=MT.cloak;P.cloak=m.dur+TS[it.tier-1]*1.5;P.cloakCd=m.cdn+P.cloak;snd('cloak');toast('Tarnung aktiv','#c79bff');
+  const it=P.st.cloak,m=MT.cloak;P.cloak=m.dur+TS[it.tier-1]*upm(it)*1.5;P.cloakCd=m.cdn+P.cloak;snd('cloak');toast('Tarnung aktiv','#c79bff');
 }
 
 /* ---------- Gegner, Geschosse, Beute ---------- */
@@ -1081,7 +1102,7 @@ function updE(e,dt){
     }
   }else{
     if(e.al&&e.ts!=='i'){e.ts='i';e.tp=0;e.tc=2}
-    if(Math.hypot(e.x-e.wx,e.y-e.wy)<60||e.wt<=0){const zz=e.zi>=0?PLN[e.zi]:null,hm=s.sp&&e.pt!==undefined?s.sp[e.pt]:null,a=rnd(0,TAU),r=zz?rnd(zz.r0,zz.r1):hm?rnd(150,950):rnd(150*s.k,s.R-200*s.k),ox=zz?zz.x:hm?hm.x:s.x,oy=zz?zz.y:hm?hm.y:s.y;e.wx=ox+Math.cos(a)*r;e.wy=oy+Math.sin(a)*r;e.wz=zrnd();e.wt=rnd(6,14)}
+    if(Math.hypot(e.x-e.wx,e.y-e.wy)<60||e.wt<=0){const zz=e.zi>=0?PLN[e.zi]:null,hm=s.sp&&e.pt!==undefined?s.sp[e.pt]:null,a=rnd(0,TAU),r=zz?rnd(zz.r0,zz.r1):hm?rnd(150,950):rnd(150*s.k,s.R-200*s.k),ox=zz?zz.cx:hm?hm.x:s.x,oy=zz?zz.cy:hm?hm.y:s.y;e.wx=ox+Math.cos(a)*r;e.wy=oy+Math.sin(a)*r;e.wz=zrnd();e.wt=rnd(6,14)}
     e.wt-=dt;const a=Math.atan2(e.wy-e.y,e.wx-e.x);tx=Math.cos(a)*sp*.4;ty=Math.sin(a)*sp*.4;tzv=clamp((e.wz-e.z)/120,-1,1)*sp*.2;e.ang=a;
   }
   const k=1-Math.exp(-2.2*dt);e.vx+=(tx-e.vx)*k;e.vy+=(ty-e.vy)*k;e.vz+=(tzv-e.vz)*k;e.x+=e.vx*dt;e.y+=e.vy*dt;e.z=clamp(e.z+e.vz*dt,-ZR,ZR);e.hit-=dt;
@@ -1161,7 +1182,7 @@ function loadSave(){
     while(P.owned.length<SHIPS.length)P.owned.push(false);BOSS.cd=d.bcd||0;if(BOSS.cd>0)BH=d.bh&&isFinite(d.bh.x)&&isFinite(d.bh.y)&&Math.hypot(d.bh.x-SYS[BOSSI].x,d.bh.y-SYS[BOSSI].y)<SYS[BOSSI].R+2000?{x:d.bh.x,y:d.bh.y}:bhPos();score=d.score||0;kills=d.kills||0;
     if(d.sk&&typeof d.sk==='object'){skK={regen:+d.sk.regen||0,reactor:+d.sk.reactor||0,shield:+d.sk.shield||0,dmg:+d.sk.dmg||0,een:+d.sk.een||0,range:+d.sk.range||0,damp:+d.sk.damp||0};skSel=SK_N[d.ss]?d.ss:'regen'}
     else{skK={regen:kills,reactor:kills,shield:0,dmg:0,een:0,range:0,damp:0};skSel='regen'} /* alter Spielstand: beide Skills behalten ihre bisherige Stufe */
-    P.vo=d.vo&&typeof d.vo==='object'?d.vo:{};P.vault=d.vault&&typeof d.vault==='object'?d.vault:{};P.vr=VAR.includes(d.vr)?d.vr:'';uid=d.uid||1000;const s=STN[P.home]||STN[0];P.x=s.sx+160;P.y=s.sy+160;fullRepair();return true}
+    P.vo=d.vo&&typeof d.vo==='object'?d.vo:{};P.vault=d.vault&&typeof d.vault==='object'?d.vault:{};P.vr=VAR.includes(d.vr)?d.vr:'';uid=d.uid||1000;for(const arr of [P.slots,P.cargo,P.storage,...Object.values(P.vault||{})])for(const it of arr||[])if(it&&it.up)it.up=Math.min(100,Math.max(0,+it.up||0));const s=STN[P.home]||STN[0];P.x=s.sx+160;P.y=s.sy+160;fullRepair();return true}
   catch(e){return false}
 }
 function hasSave(){try{return !!localStorage.getItem(SAVE)}catch(e){return false}}
@@ -1827,8 +1848,8 @@ function sysDraw(s){
   const sc=hf(s.col);
   drawMesh(SPH,model(s.x,0,s.y,tmr*.05,0,0,34*s.k,34*s.k,34*s.k),[1,.97,.9],0,1,1);
   for(const p of s.pl){const a=p.o+tmr*p.sp,px=s.x+Math.cos(a)*p.r,pz=s.y+Math.sin(a)*p.r,L=[s.x-px,60*s.k,s.y-pz],ln=Math.hypot(L[0],L[1],L[2]),col=hslc(p.hue,.55,.55);
-    const pt=s.pz&&PLT.ready;drawMesh(pt?PLM:SPH,model(px,0,pz,tmr*(pt?.04:.2)+p.o,.3,0,p.sz,p.sz,p.sz),pt?[1,1,1]:col,0,1,0,[L[0]/ln,L[1]/ln,L[2]/ln]);
-    bill(CELL.glow,px,0,pz,p.sz*1.7,pt?mixc([.4,.65,1],col,.45):col,.22);
+    const pt=s.pz&&PLT.ready;drawMesh(pt?PLM:SPH,model(px,0,pz,tmr*(pt?.04:.2)+p.o,.3,0,p.sz,p.sz,p.sz),s.pz?p.tint:col,0,1,0,[L[0]/ln,L[1]/ln,L[2]/ln]);
+    bill(CELL.glow,px,0,pz,p.sz*1.7,s.pz?p.gl:col,.22);
     circ(s.x,s.y,p.r,.5,s.k>1?2*s.k/6:2,[.47,.67,.78],.16,0)}
   bill(CELL.glow,s.x,6,s.y,300*s.k,sc,.9);bill(CELL.glow,s.x,8,s.y,130*s.k,[1,.97,.9],.9);bill(CELL.glow,s.x,2,s.y,700*s.k,sc,.2);
   circ(s.x,s.y,s.R,1,s.k>1?5*s.k/4:5,sc,.33,s.k>1?34*s.k/4:34,true);
@@ -2048,9 +2069,9 @@ function drawRadar(){
   if(WORLD==='main'){let nearest=-1,nd=Infinity;STN.forEach((s,i)=>{const d=Math.hypot(P.x-s.sx,P.y-s.sy);if(d<nd){nd=d;nearest=i}});STN.forEach((s,i)=>{let [dx,dy]=rt((s.sx-P.x)*k,(s.sy-P.y)*k);const d=Math.hypot(dx,dy),m=R-12;if(d>m){dx*=m/d;dy*=m/d}const active=i===nearest;const rr=active?7:4.5;c.fillStyle=active?'#168bff':(d>m?'rgba(56,217,255,.55)':'#38d9ff');c.strokeStyle=active?'#b9e1ff':'#a4f3ff';c.lineWidth=active?2:1;c.beginPath();c.arc(R+dx,R+dy,rr,0,TAU);c.fill();c.stroke();if(active){c.beginPath();c.arc(R+dx,R+dy,10,0,TAU);c.strokeStyle='rgba(22,139,255,.65)';c.lineWidth=1.5;c.stroke()}})}
   if(WORLD==='main'){c.save();c.beginPath();c.arc(R,R,R-2,0,TAU);c.clip();c.strokeStyle='rgba(68,224,122,.8)';c.lineWidth=1.6;c.setLineDash([5,4]);
     const wr=WARP_STOP*k,ring=(x,y,w2)=>{const ww=w2?w2*k:wr,[dx,dy]=rt((x-P.x)*k,(y-P.y)*k);if(Math.hypot(dx,dy)>R+ww)return;c.beginPath();c.arc(R+dx,R+dy,ww,0,TAU);c.stroke()};
-    for(const s of STN)ring(s.sx,s.sy);for(const s of SYS)if(s.sp)for(const q of s.sp)ring(q.x,q.y);for(const z of PLN)if(z.max)ring(z.x,z.y,z.wr);for(const n of NEB)if(n.sp)for(const q of n.sp)ring(q.x,q.y);
+    for(const s of STN)ring(s.sx,s.sy);for(const s of SYS)if(s.sp)for(const q of s.sp)ring(q.x,q.y);for(const z of PLN)if(z.max)ring(z.cx,z.cy,z.wr);for(const n of NEB)if(n.sp)for(const q of n.sp)ring(q.x,q.y);
     c.setLineDash([]);c.restore()}
-  if(WORLD==='main'){const cs=curSys();let spl=cs>=0&&SYS[cs].pz?PLN.filter(z=>z.si===cs&&z.max).map(z=>({x:z.x,y:z.y,r:z.r1})):cs>=0&&SYS[cs].sp?SYS[cs].sp:null;if(!spl)for(const n of NEB)if(n.sp&&Math.hypot(P.x-n.x,P.y-n.y)<n.r)spl=n.sp;if(spl)spl.forEach((q,qi)=>{let [dx,dy]=rt((q.x-P.x)*k,(q.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-9,out=d>m;if(out){dx*=m/d;dy*=m/d}
+  if(WORLD==='main'){const cs=curSys();let spl=cs>=0&&SYS[cs].pz?PLN.filter(z=>z.si===cs&&z.max).map(z=>({x:z.cx,y:z.cy,r:z.r1})):cs>=0&&SYS[cs].sp?SYS[cs].sp:null;if(!spl)for(const n of NEB)if(n.sp&&Math.hypot(P.x-n.x,P.y-n.y)<n.r)spl=n.sp;if(spl)spl.forEach((q,qi)=>{let [dx,dy]=rt((q.x-P.x)*k,(q.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-9,out=d>m;if(out){dx*=m/d;dy*=m/d}
     const col=qi?'#9a0018':'#ff2a2a';
     if(!out){c.strokeStyle=col;c.globalAlpha=.55;c.lineWidth=1.5;c.beginPath();c.arc(R+dx,R+dy,(q.r||SPAWN_R)*k,0,TAU);c.stroke();c.globalAlpha=1}
     c.fillStyle=col;c.strokeStyle=qi?'#ff6a7a':'#ffb0b0';c.lineWidth=1.2;c.beginPath();c.arc(R+dx,R+dy,qi?4.5:3.2,0,TAU);c.fill();c.stroke()})}
@@ -2128,11 +2149,11 @@ const ORDER=['rail','plasma','laser','missile','bolt','flame','reactor','shield'
 function take(id){for(const a of [P.cargo,P.storage]){const i=a.findIndex(x=>x.id===id);if(i>=0)return a.splice(i,1)[0]}return null}
 function stash(it){if(P.cargo.length<cap())P.cargo.push(it);else P.storage.push(it)}
 function findIt(id){return P.slots.find(x=>x&&x.id===id)||P.cargo.find(x=>x.id===id)||P.storage.find(x=>x.id===id)}
-const capOf=it=>it.t==='engine'?300:100;
+const capOf=it=>100;
 function upBtns(it,act){
-  if(!(it.tier>=4&&(MT[it.t].c==='w'||MT[it.t].c==='d'||it.t==='engine')&&it.id&&['unfit','fit','tostore','tocargo'].includes(act)))return '';
-  const per=it.t==='engine'?2:1,u=it.up||0,left=capOf(it)-u;if(left<=0)return '<span class="ds" style="text-align:center">MAX +'+capOf(it)+' %</span>';
-  return '<button class="b sm" data-a="upg" data-id="'+it.id+'" data-n="'+per+'"'+(P.credits<1000?' disabled':'')+'>+'+per+' % · 1.000 CR</button>'+(left>=per*10?'<button class="b sm" data-a="upg" data-id="'+it.id+'" data-n="'+per*10+'"'+(P.credits<10000?' disabled':'')+'>+'+per*10+' % · 10.000 CR</button>':'');
+  if(!(it.tier>=4&&it.id&&['unfit','fit','tostore','tocargo'].includes(act)))return '';
+  const u=it.up||0,left=capOf(it)-u;if(left<=0)return '<span class="ds" style="text-align:center">MAX · Stufe '+capOf(it)+'</span>';
+  return '<button class="b sm" data-a="upg" data-id="'+it.id+'" data-n="1"'+(P.credits<1000?' disabled':'')+'>Stufe '+(u+1)+' · 1.000 CR</button>'+(left>=10?'<button class="b sm" data-a="upg" data-id="'+it.id+'" data-n="10"'+(P.credits<10000?' disabled':'')+'>+10 Stufen · 10.000 CR</button>':'');
 }
 function itRow(it,act,label,pr,dis,extra){
   const c=TC[it.tier-1];
@@ -2149,7 +2170,7 @@ function renderStation(){
   if(tab==='fit'){
     h+='<div class="sec"><span>'+SHIPS[P.cls].k.toUpperCase()+' · MODULE '+(P.slots.length-free)+'/'+P.slots.length+'</span><button class="b sm" data-a="auto">Automatisch</button></div>';
     P.slots.filter(Boolean).sort(invCmp).concat(P.slots.filter(x=>!x)).forEach(it=>{h+=it?itRow(it,'unfit','Ausbauen'):'<div class="it"><div class="badge" style="border-style:dashed;color:#27455c;border-color:#27455c">+</div><div class="info"><div class="ds">Slot frei</div></div></div>'});
-    h+='<div class="empty-note">Module der Stufe IV und V lassen sich hier aufwerten: Waffen je 1.000 CR +1 % Schaden (höchstens +100 %), Triebwerke je 1.000 CR +2 % Tempo (höchstens +300 %).</div>';
+    h+='<div class="empty-note">Module der Stufe IV und V lassen sich bis Stufe 100 aufwerten: jede Stufe kostet 1.000 CR und verstärkt die Wirkung um +1 % (Triebwerke +3 %).</div>';
     h+='<div class="sec"><span>EINBAUBAR</span></div>';
     const av=P.cargo.map(i=>[i,'Fracht']).concat(P.storage.map(i=>[i,'Lager'])).sort((a,b)=>invCmp(a[0],b[0]));
     h+=av.length?av.map(([it,w])=>itRow(it,'fit','Einbauen',0,!free,w)).join(''):'<div class="empty-note">Keine Module in Fracht oder Lager.</div>';
@@ -2189,11 +2210,11 @@ function renderStation(){
 }
 function autoFit(){
   const pool=P.cargo.concat(P.storage).sort((a,b)=>ORDER.indexOf(a.t)-ORDER.indexOf(b.t)||b.tier-a.tier);
-  let ds=P.slots.reduce((a,i)=>a+(i&&i.t==='damper'?MT.damper.pct[i.tier-1]:0),0);
+  let ds=P.slots.reduce((a,i)=>a+(i&&i.t==='damper'?dmpOf(i):0),0);
   const cnt={};P.slots.forEach(i=>{if(i)cnt[i.t]=(cnt[i.t]||0)+1});
   for(const it of pool){const k=P.slots.indexOf(null);if(k<0)break;
     if((cnt[it.t]||0)>=LIM(it.t))continue;if(it.t==='damper'&&ds>=95)continue;
-    take(it.id);P.slots[k]=it;if(it.t==='damper')ds+=MT.damper.pct[it.tier-1];cnt[it.t]=(cnt[it.t]||0)+1}
+    take(it.id);P.slots[k]=it;if(it.t==='damper')ds+=dmpOf(it);cnt[it.t]=(cnt[it.t]||0)+1}
   stats();
 }
 function stAction(a,d){
@@ -2208,7 +2229,7 @@ function stAction(a,d){
     case 'sellcommon':for(const a2 of [P.cargo,P.storage])for(let i=a2.length-1;i>=0;i--)if(a2[i].tier===1){P.credits+=Math.floor(price(a2[i])/2);a2.splice(i,1)}break;
     case 'tm':tmode=d.m;break;
     case 'buy':{const it=mk(d.t,+d.tier),p=price(it);if(P.credits<p)return toast('Zu wenig Credits','#ff4d4d');P.credits-=p;stash(it);toast('Gekauft: '+nameOf(it),TC[it.tier-1]);break}
-    case 'upg':{const it=findIt(+d.id);if(!it)return;const per=it.t==='engine'?2:1,n=Math.min(+d.n||per,capOf(it)-(it.up||0));if(n<=0)return;const cost=n/per*1000;
+    case 'upg':{const it=findIt(+d.id);if(!it)return;const per=1,n=Math.min(+d.n||per,capOf(it)-(it.up||0));if(n<=0)return;const cost=n/per*1000;
       if(P.credits<cost)return toast('Zu wenig Credits','#ff4d4d');P.credits-=cost;it.up=(it.up||0)+n;toast('Aufgewertet: '+nameOf(it),'#ffd04a');break}
     case 'auto':autoFit();break;
     case 'yard':yardSel=+d.i;$('stbody').scrollTop=0;break;

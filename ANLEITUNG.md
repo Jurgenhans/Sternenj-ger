@@ -15,7 +15,10 @@ Das Spielfeld hat außerdem eine Höhe (Z-Achse, ±60 Einheiten auf der Anzeige)
 - **HELIOS (System 1):** 9 Planeten, 1 Station, Asteroidengürtel. Jeder Planet hat die NPC-Schiffe eines der früheren neun Systeme (von innen nach außen immer stärker, Planet IX mit Aliens).
 - **NEMESIS (System 2):** 15 Planeten mit stärkeren NPCs als in HELIOS. Eine Station an jedem 2. Planeten (II, IV, VI … XIV). NPCs lassen **goldene Module der Stufe V** fallen. Sie sind genau doppelt so stark wie Stufe IV (Frostfeld höchstens 95 %), nicht kaufbar, und lassen sich in der Station einbauen und aufwerten.
 - **ZENITH (System 3):** das kleine Wächter-System mit Boss, Schwarzem Loch und Abgrund.
-- **Planeten:** Auf jedem Planeten kann man landen (Knopf LANDEN in der Nähe), aussteigen und im Tresor lagern. Die Spielwelt beim Aussteigen ist auf allen Planeten dieselbe; der Tresor und die Munitionskiste gehören je Planet.
+- Die beiden großen Systeme sind doppelt so groß wie zuvor, die Planeten sind entsprechend weiter verteilt.
+- **Planeten:** Es gibt sie in dunklem Rot, Grün, Schwarz, Grau, Lila und Blau. Auf jedem Planeten kann man landen (Knopf LANDEN in der Nähe), aussteigen und im Tresor lagern. Die Spielwelt beim Aussteigen ist auf allen Planeten dieselbe; Tresor und Munitionskiste gehören je Planet.
+- **NPC-Spawnpunkte** liegen weit weg von Planeten, Planeten-Asteroiden, Gürteln und Stationen (rote Kreise im Radar). An etwa 40 % davon liegen viele Asteroiden und Kristalle sowie gemischter Nebel (rot, blau, grün).
+- **Upgrades:** Alle Module der Stufe IV und V lassen sich in der Station bis Stufe 100 aufwerten (1.000 CR je Stufe, +1 % Wirkung je Stufe, Triebwerke +3 %). Obergrenzen gelten weiter (Dämpfer 95 %, Frostfeld 95 %, Energiesparen 90 %).
 
 ## Weg A: Ohne Android Studio, direkt bei GitHub (auch vom Handy)
 
