@@ -362,12 +362,12 @@ SYS.forEach((s,i)=>{
       s.pl.push({o,r,sz,sp:0,hue,zi:PLN.length,tint,gl:tint.map(v=>Math.min(1,v*1.7+.05))});PLN.push(z);zs.push(z);
     }
     s.max=zs.reduce((p,z)=>p+z.max,0);
-    if(i===0){ /* eine Station zwischen dem 1. und 2. Orbit, seitlich vom 1. Planeten */
-      const rs=(s.orb[0]+s.orb[1]*.5)*SC,an=s.pl[0].o+.9;
-      s.sx=s.x+Math.cos(an)*rs;s.sy=s.y+Math.sin(an)*rs;
-      STN.push({name:s.name,sx:s.sx,sy:s.sy,lv:4,si:i,pi:-1});
-    }else{ /* Station an jedem 2. Planeten (2., 4., 6. ...), direkt am Planeten */
-      zs.forEach((z,k)=>{if(k%2!==1)return;const o=s.pl[k].o,d=z.sz*1.15+2500,sx=z.x+Math.cos(o)*d,sy=z.y+Math.sin(o)*d;
+    if(i===0){ /* 2 Stationen, verteilt: eine innen, eine weiter außen (jeweils zwischen zwei Orbits) */
+      [[.5,0,'ALPHA'],[5.5,5,'BETA']].forEach(([f,pk,nm])=>{const rs=(s.orb[0]+s.orb[1]*f)*SC,an=s.pl[pk].o+.9,sx=s.x+Math.cos(an)*rs,sy=s.y+Math.sin(an)*rs;
+        STN.push({name:s.name+' '+nm,sx,sy,lv:4,si:i,pi:-1})});
+      s.sx=STN[0].sx;s.sy=STN[0].sy;
+    }else{ /* 2 Stationen, verteilt: an Planet IV und Planet XI */
+      [3,10].forEach(k=>{const z=zs[k],o=s.pl[k].o,d=z.sz*1.15+2500,sx=z.x+Math.cos(o)*d,sy=z.y+Math.sin(o)*d;
         z.st=STN.length;STN.push({name:z.name,sx,sy,lv:4,si:i,pi:PLN.indexOf(z)})});
       s.sx=STN.find(t=>t.si===i).sx;s.sy=STN.find(t=>t.si===i).sy;
     }
@@ -416,6 +416,9 @@ NEB.forEach((n,i)=>{n.r=.8*1150*SC*(n.size||1);n.k=1;n.R=n.r;n.max=n.mix[0]+n.mi
     else n.pf.push({x:n.x+Math.cos(a)*d,y:n.y+Math.sin(a)*d,h:-500+r()*1200,s:n.r*(.03+.05*r()),a:.3+.25*r()})}});
 /* Nebel an den NPC-Spawnpunkten: Punkt 1 bleibt klar, nur Punkt 2 erhält alle drei Nebelfarben gemischt. */
 const SPNEB=[];
+/* Spawnpunkte durchnummerieren, von schwach (1) nach stark */
+const SPN_N=(()=>{const L=[];PLN.forEach(z=>L.push({o:z,s:(1+.6*(z.lv-1))*z.bf}));NEB.forEach(n=>{if(n.max&&n.sp)L.push({o:n,s:(1+.6*(n.lv-1))*n.bf})});
+  L.sort((a,b)=>a.s-b.s||a.o.lv-b.o.lv);L.forEach((q,i)=>q.o.num=i+1);return L.length})();
 /* Gemischter Nebel (rot, blau, grün) an etwa 40 % der NPC-Spawnpunkte (Planeten mit fx) */
 PLN.forEach((z,j)=>{
   if(!z.fx)return;
@@ -2071,10 +2074,10 @@ function drawRadar(){
     const wr=WARP_STOP*k,ring=(x,y,w2)=>{const ww=w2?w2*k:wr,[dx,dy]=rt((x-P.x)*k,(y-P.y)*k);if(Math.hypot(dx,dy)>R+ww)return;c.beginPath();c.arc(R+dx,R+dy,ww,0,TAU);c.stroke()};
     for(const s of STN)ring(s.sx,s.sy);for(const s of SYS)if(s.sp)for(const q of s.sp)ring(q.x,q.y);for(const z of PLN)if(z.max)ring(z.cx,z.cy,z.wr);for(const n of NEB)if(n.sp)for(const q of n.sp)ring(q.x,q.y);
     c.setLineDash([]);c.restore()}
-  if(WORLD==='main'){const cs=curSys();let spl=cs>=0&&SYS[cs].pz?PLN.filter(z=>z.si===cs&&z.max).map(z=>({x:z.cx,y:z.cy,r:z.r1})):cs>=0&&SYS[cs].sp?SYS[cs].sp:null;if(!spl)for(const n of NEB)if(n.sp&&Math.hypot(P.x-n.x,P.y-n.y)<n.r)spl=n.sp;if(spl)spl.forEach((q,qi)=>{let [dx,dy]=rt((q.x-P.x)*k,(q.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-9,out=d>m;if(out){dx*=m/d;dy*=m/d}
+  if(WORLD==='main'){const cs=curSys();let spl=cs>=0&&SYS[cs].pz?PLN.filter(z=>z.si===cs&&z.max).map(z=>({x:z.cx,y:z.cy,r:z.r1,num:z.num})):cs>=0&&SYS[cs].sp?SYS[cs].sp:null;if(!spl)for(const n of NEB)if(n.sp&&Math.hypot(P.x-n.x,P.y-n.y)<n.r)spl=n.sp.map(q=>({x:q.x,y:q.y,num:n.num}));if(spl)spl.forEach((q,qi)=>{let [dx,dy]=rt((q.x-P.x)*k,(q.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-9,out=d>m;if(out){dx*=m/d;dy*=m/d}
     const col=qi?'#9a0018':'#ff2a2a';
     if(!out){c.strokeStyle=col;c.globalAlpha=.55;c.lineWidth=1.5;c.beginPath();c.arc(R+dx,R+dy,(q.r||SPAWN_R)*k,0,TAU);c.stroke();c.globalAlpha=1}
-    c.fillStyle=col;c.strokeStyle=qi?'#ff6a7a':'#ffb0b0';c.lineWidth=1.2;c.beginPath();c.arc(R+dx,R+dy,qi?4.5:3.2,0,TAU);c.fill();c.stroke()})}
+    c.fillStyle=col;c.strokeStyle=qi?'#ff6a7a':'#ffb0b0';c.lineWidth=1.2;c.beginPath();c.arc(R+dx,R+dy,qi?4.5:3.2,0,TAU);c.fill();c.stroke();if(q.num){c.save();c.fillStyle='#ff3030';c.strokeStyle='rgba(0,0,0,.85)';c.lineWidth=2.5;c.font='700 12px "Chakra Petch",sans-serif';c.textAlign='center';c.strokeText(q.num,R+dx,R+dy-7);c.fillText(q.num,R+dx,R+dy-7);c.restore()}})}
   if(WORLD==='main')for(const z of PLN){let [dx,dy]=rt((z.x-P.x)*k,(z.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-9;if(d>m){dx*=m/d;dy*=m/d}c.fillStyle=z.st>=0?'#7fe8ff':'#8affc8';c.beginPath();c.arc(R+dx,R+dy,d>m?2.5:4,0,TAU);c.fill()}
   c.fillStyle='#ff4d4d';
   for(const e of E){const [dx,dy]=rt((e.x-P.x)*k,(e.y-P.y)*k);if(dx*dx+dy*dy>(R-6)*(R-6))continue;const r=2.5+ct(e);c.fillStyle=e.boss?'#ffd04a':e.kb?'#d070ff':e.al?'#5dffb0':e.wp==='flame'?'#ff9a2a':e.wp==='bolt'?'#c9b3ff':'#ff4d4d';c.beginPath();c.arc(R+dx,R+dy,r,0,TAU);c.fill();const dzp=e.z-P.z;if(dzp>90||dzp<-90){const sg=dzp>0?-1:1,y0=R+dy+sg*(r+1.5);c.beginPath();c.moveTo(R+dx-3,y0);c.lineTo(R+dx+3,y0);c.lineTo(R+dx,y0+sg*4);c.closePath();c.fill()}}
@@ -2102,7 +2105,7 @@ function drawMap(){if(WORLD==='abyss')return drawMapAby();
     m.fillStyle=s.col;m.beginPath();m.arc(s.x*k,s.y*k,5,0,TAU);m.fill();
     m.font='700 14px "Chakra Petch",sans-serif';m.fillText(s.name,s.x*k,s.y*k-s.R*k-18);
     m.font='600 12px "Rajdhani",sans-serif';m.fillStyle='#9fb6c8';m.fillText('Stufe '+s.lv+(tagOf(s)?' · '+tagOf(s).toLowerCase():'')+' · '+(s.n||0)+'/'+s.max+(s===SYS[BOSSI]?bossTag():s===SYS[KBI]?kbTag():''),s.x*k,s.y*k-s.R*k-5);
-    });STN.forEach(s=>{m.fillStyle='#38d9ff';m.fillRect(s.sx*k-3,s.sy*k-3,6,6)});PLN.forEach(z=>{m.fillStyle=z.st>=0?'#7fe8ff':'#8affc8';m.beginPath();m.arc(z.x*k,z.y*k,1.8,0,TAU);m.fill()});
+    });STN.forEach(s=>{m.fillStyle='#38d9ff';m.fillRect(s.sx*k-3,s.sy*k-3,6,6)});PLN.forEach(z=>{m.fillStyle=z.st>=0?'#7fe8ff':'#8affc8';m.beginPath();m.arc(z.x*k,z.y*k,1.8,0,TAU);m.fill()});const spn=(x,y,n)=>{m.fillStyle='#ff3030';m.beginPath();m.arc(x*k,y*k,2.4,0,TAU);m.fill();m.font='700 11px "Chakra Petch",sans-serif';m.textAlign='center';m.lineWidth=3;m.strokeStyle='rgba(5,10,22,.9)';m.strokeText(n,x*k,y*k-5);m.fillText(n,x*k,y*k-5)};PLN.forEach(z=>spn(z.cx,z.cy,z.num));NEB.forEach(n=>{if(n.sp&&n.num)spn(n.sp[0].x,n.sp[0].y,n.num)});m.fillStyle='#ff3030';m.font='600 12px "Rajdhani",sans-serif';m.textAlign='left';m.fillText('Rote Zahlen = NPC-Spawnpunkte, 1 schwach bis '+SPN_N+' stark',10,612);m.textAlign='center';
   if(BH){m.fillStyle='#c06bff';m.beginPath();m.arc(BH.x*k,BH.y*k,6,0,TAU);m.fill();m.strokeStyle='#c06bff';m.lineWidth=2;m.beginPath();m.arc(BH.x*k,BH.y*k,11,0,TAU);m.stroke()}
   m.save();m.translate(P.x*k,P.y*k);m.rotate(P.ang+1.5708);m.fillStyle='#44e07a';m.beginPath();m.moveTo(0,-9);m.lineTo(6,7);m.lineTo(-6,7);m.closePath();m.fill();m.restore();m.fillStyle='#9fb6c8';m.font='600 13px "Rajdhani",sans-serif';m.textAlign='left';m.fillText('HÖHE Z '+Math.round(P.z/10)+'  (Bereich ±'+ZR/10+')',10,630);
 }
