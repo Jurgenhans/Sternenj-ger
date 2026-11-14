@@ -10,6 +10,13 @@ Die Kamera lässt sich zoomen: Tasten + und − am linken Bildschirmrand (gedrü
 
 Das Spielfeld hat außerdem eine Höhe (Z-Achse, ±60 Einheiten auf der Anzeige): Mit den Tasten ▲ HOCH und ▼ RUNTER am rechten Bildschirmrand (Tastatur: Leertaste / Umschalt) fliegst du nach oben und unten. Gegner, Geschosse und Beute haben ebenfalls eine Höhe, Stationen und Sonnen liegen auf Höhe 0. Dünne Linien zeigen, wie hoch ein Objekt über oder unter der Spielebene schwebt.
 
+## Die Welt: 3 Sonnensysteme
+
+- **HELIOS (System 1):** 9 Planeten, 1 Station, Asteroidengürtel. Jeder Planet hat die NPC-Schiffe eines der früheren neun Systeme (von innen nach außen immer stärker, Planet IX mit Aliens).
+- **NEMESIS (System 2):** 15 Planeten mit stärkeren NPCs als in HELIOS. Eine Station an jedem 2. Planeten (II, IV, VI … XIV). NPCs lassen **goldene Module der Stufe V** fallen. Sie sind genau doppelt so stark wie Stufe IV (Frostfeld höchstens 95 %), nicht kaufbar, und lassen sich in der Station einbauen und aufwerten.
+- **ZENITH (System 3):** das kleine Wächter-System mit Boss, Schwarzem Loch und Abgrund.
+- **Planeten:** Auf jedem Planeten kann man landen (Knopf LANDEN in der Nähe), aussteigen und im Tresor lagern. Die Spielwelt beim Aussteigen ist auf allen Planeten dieselbe; der Tresor und die Munitionskiste gehören je Planet.
+
 ## Weg A: Ohne Android Studio, direkt bei GitHub (auch vom Handy)
 
 1. Kostenloses Konto auf github.com anlegen und ein neues Repository erstellen (privat ist ok).
