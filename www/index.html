@@ -319,7 +319,8 @@ const ABX=8000,ABY=8000,ABR=1500;
 /* FS: Spielfeld 100x größer, SC: Sonnensysteme 75x größer (Schiffe, Stationen und Gegner behalten ihre Größe) */
 const FS=100,SC=75,WS=2.5,W=16000*FS*WS,H=16000*FS*WS,SR0=1150,SAVE='sternenjaeger_v1';
 /* Z-Achse: Flughöhe von -ZR bis +ZR, Ebene 0 = Höhe von Sonnen und Stationen */
-const LOOTR=450,TURN=2.5,VSP=.62,FLH=130,DOCKZ=160;let ZR=1500;const ZR0=1500,ZRA=600;const zrnd=()=>rnd(-300,300);
+const STS=3; /* Stationen 3x so groß: Modell, Andockradius, Leuchten, Begleitschiffe, Labels (nicht auf Karte/Radar) */
+const LOOTR=450,TURN=2.5,VSP=.62,FLH=130,DOCKZ=160*STS;let ZR=1500;const ZR0=1500,ZRA=600;const zrnd=()=>rnd(-300,300);
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 /* ---------- Systeme ---------- */
@@ -367,7 +368,7 @@ SYS.forEach((s,i)=>{
         STN.push({name:s.name+' '+nm,sx,sy,lv:4,si:i,pi:-1})});
       s.sx=STN[0].sx;s.sy=STN[0].sy;
     }else{ /* 2 Stationen, verteilt: an Planet IV und Planet XI */
-      [3,10].forEach(k=>{const z=zs[k],o=s.pl[k].o,d=z.sz*1.15+2500,sx=z.x+Math.cos(o)*d,sy=z.y+Math.sin(o)*d;
+      [3,10].forEach(k=>{const z=zs[k],o=s.pl[k].o,d=z.sz*1.15+2500+500*STS,sx=z.x+Math.cos(o)*d,sy=z.y+Math.sin(o)*d;
         z.st=STN.length;STN.push({name:z.name,sx,sy,lv:4,si:i,pi:PLN.indexOf(z)})});
       s.sx=STN.find(t=>t.si===i).sx;s.sy=STN.find(t=>t.si===i).sy;
     }
@@ -384,7 +385,7 @@ SYS.forEach((s,i)=>{
         let m=s.R-4000-z.r1-rc;
         for(const bb of bl)m=Math.min(m,Math.abs(rc-bb.rm)-bb.wd-z.r1-3000);
         for(const q of zs){if(q===z)continue;m=Math.min(m,Math.hypot(cx-q.x,cy-q.y)-(q.sz*1.4+5000)-z.r1-1500);if(q.cx!==undefined)m=Math.min(m,Math.hypot(cx-q.cx,cy-q.cy)-q.r1-z.r1-2500)}
-        for(const t of STN)m=Math.min(m,Math.hypot(cx-t.sx,cy-t.sy)-z.r1-1500);
+        for(const t of STN)m=Math.min(m,Math.hypot(cx-t.sx,cy-t.sy)-z.r1-1500-400*STS);
         if(m>bm){bm=m;best={cx,cy}}
         if(m>0)break search;
       }
@@ -604,7 +605,7 @@ function spawnZ(zi,c,any){
   for(let t=0;t<100;t++){
     const a=rnd(0,TAU),r=rnd(z.r0,z.r1),x=z.cx+Math.cos(a)*r,y=z.cy+Math.sin(a)*r;
     if(!any&&P&&Math.hypot(x-P.x,y-P.y)<665)continue;
-    if(STN.some(s=>Math.hypot(x-s.sx,y-s.sy)<400))continue;
+    if(STN.some(s=>Math.hypot(x-s.sx,y-s.sy)<400*STS))continue;
     pos={x,y};break;
   }
   if(!pos)return false;
@@ -627,7 +628,7 @@ function spawnE(si,c,any,pt){
   for(let t=0;t<100;t++){
     const a=rnd(0,TAU),r=rnd(500,2600),x=ctr.x+Math.cos(a)*r,y=ctr.y+Math.sin(a)*r;
     if(!any&&P&&Math.hypot(x-P.x,y-P.y)<665)continue;
-    if(Math.hypot(x-s.sx,y-s.sy)<400)continue;
+    if(Math.hypot(x-s.sx,y-s.sy)<400*STS)continue;
     pos={x,y,q};break;
   }
   if(!pos)return false;
@@ -1057,12 +1058,12 @@ function updP(dt){
   P.energy=Math.min(st.en,P.energy+st.er*dt);
   if(P.cloak>0)P.cloak-=dt; if(P.cloakCd>0)P.cloakCd-=dt;
   playerFire(dt);
-  nearPl=-1;nearSys=-1;zHint=-1;if(WORLD==='main'){let bd=1e18;PLN.forEach((q,i)=>{const d=Math.hypot(P.x-q.x,P.y-q.y,P.z);if(d<q.sz+LANDR&&d<bd){bd=d;nearPl=i}})}if(WORLD==='main')STN.forEach((s,i)=>{if(Math.hypot(P.x-s.sx,P.y-s.sy)<290){if(Math.abs(P.z)<DOCKZ)nearSys=i;else zHint=i}});
+  nearPl=-1;nearSys=-1;zHint=-1;if(WORLD==='main'){let bd=1e18;PLN.forEach((q,i)=>{const d=Math.hypot(P.x-q.x,P.y-q.y,P.z);if(d<q.sz+LANDR&&d<bd){bd=d;nearPl=i}})}if(WORLD==='main')STN.forEach((s,i)=>{if(Math.hypot(P.x-s.sx,P.y-s.sy)<290*STS){if(Math.abs(P.z)<DOCKZ)nearSys=i;else zHint=i}});
 }
 const SPAWN_R=990,WARP_STOP=SPAWN_R*2.5; /* Spawnbereich der Gegner (Radius) und Warp-Abschaltradius = 2,5x */
 function nearSpawn(){
   // Nur die unmittelbare Stations-/Andockzone sperrt Warp.
-  for(const s of STN)if(Math.hypot(P.x-s.sx,P.y-s.sy)<290)return 's';
+  for(const s of STN)if(Math.hypot(P.x-s.sx,P.y-s.sy)<290*STS)return 's';
   for(const z of PLN)if(Math.hypot(P.x-z.cx,P.y-z.cy)<z.wr)return 'e';
   // Wächter-System ohne Planeten-Zonen: Spawn um das Zentrum.
   for(const s of SYS){
@@ -1858,15 +1859,15 @@ function sysDraw(s){
   circ(s.x,s.y,s.R,1,s.k>1?5*s.k/4:5,sc,.33,s.k>1?34*s.k/4:34,true);
 }
 function stationDraw(s,i){
-  const a=tmr*.2,near=nearSys===i;
-  drawMesh(ST_RING,model(s.sx,0,s.sy,-a,0,0,1,1,1));drawMesh(ST_HUB,model(s.sx,0,s.sy,a*.6,0,0,1,1,1));
-  circ(s.sx,s.sy,290,2,3,near?[.27,.88,.48]:[.22,.85,1],near?.9:.35,28,true);
-  gnd(CELL.glow,s.sx,1,s.sy,190,[.22,.85,1],.22);
-  bill(CELL.glow,s.sx,14,s.sy,48,[.9,.98,1],.9);bill(CELL.glow,s.sx,10,s.sy,110,[.22,.85,1],.4);
-  {const u=(tmr*.25+i*.37)%1;circ(s.sx,s.sy,290+u*330,2,2,[.22,.85,1],.35*(1-u),28,true)}
-  for(let k=0;k<3;k++){const ra=420+k*55,w=.16+.035*k,sg=k%2?-1:1,an=tmr*w*sg+k*2.1+i,o=SHT[i*3+k]||(SHT[i*3+k]={sk:k+i*.37,vz:0});
-    drawShip3(o,s.sx+Math.cos(an)*ra,s.sy+Math.sin(an)*ra,an+sg*Math.PI/2,10+k*3,0,'P',ra*w,.95,0,PAL_T,TR_TINT[k%3])}
-  for(let k=0;k<6;k++){const an=k/6*TAU+.52+a,on=(Math.floor(tmr*2)+k)%3===0;bill(CELL.glow,s.sx+Math.cos(an)*134,12,s.sy+Math.sin(an)*134,on?11:7,on?[.27,.88,.48]:[.11,.43,.56],on?.95:.6)}
+  const a=tmr*.2,near=nearSys===i,K=STS;
+  drawMesh(ST_RING,model(s.sx,0,s.sy,-a,0,0,K,K,K));drawMesh(ST_HUB,model(s.sx,0,s.sy,a*.6,0,0,K,K,K));
+  circ(s.sx,s.sy,290*K,2*K,3*K,near?[.27,.88,.48]:[.22,.85,1],near?.9:.35,28*K,true);
+  gnd(CELL.glow,s.sx,K,s.sy,190*K,[.22,.85,1],.22);
+  bill(CELL.glow,s.sx,14*K,s.sy,48*K,[.9,.98,1],.9);bill(CELL.glow,s.sx,10*K,s.sy,110*K,[.22,.85,1],.4);
+  {const u=(tmr*.25+i*.37)%1;circ(s.sx,s.sy,(290+u*330)*K,2*K,2*K,[.22,.85,1],.35*(1-u),28*K,true)}
+  for(let k=0;k<3;k++){const ra=(420+k*55)*K,w=.16+.035*k,sg=k%2?-1:1,an=tmr*w*sg+k*2.1+i,o=SHT[i*3+k]||(SHT[i*3+k]={sk:k+i*.37,vz:0});
+    drawShip3(o,s.sx+Math.cos(an)*ra,s.sy+Math.sin(an)*ra,an+sg*Math.PI/2,(10+k*3)*K,0,'P',ra*w,.95,0,PAL_T,TR_TINT[k%3])}
+  for(let k=0;k<6;k++){const an=k/6*TAU+.52+a,on=(Math.floor(tmr*2)+k)%3===0;bill(CELL.glow,s.sx+Math.cos(an)*134*K,12*K,s.sy+Math.sin(an)*134*K,(on?11:7)*K,on?[.27,.88,.48]:[.11,.43,.56],on?.95:.6)}
 }
 function bhDraw(){
   const x=BH.x,z=BH.y,t=tmr;
@@ -1931,7 +1932,7 @@ function render3D(){
       drawMesh(CRYS,model(a.x-q*.35,hy,a.y-q*.25,rot+2.5,-.5,.25,m*.5,m*.5,m*.5),t,0,1,.3);
       bill(CELL.glow,a.x,hy+q,a.y,q*2.4,[Math.min(1,t[0]*3),Math.min(1,t[1]*3),Math.min(1,t[2]*3)],.16)}
     else drawMesh(ROCK[i%6],model(a.x,hy,a.y,rot,tmr*.05*a.d+i,i*.7,q,q,q),main?(a.tt||(a.tt=a.t?mulc(a.t,4.2):[1.1,1.02,1.08])):[1.3,.62,.66])}
-  if(main){STN.forEach((s,i)=>{if(vis(s.sx,s.sy,600))stationDraw(s,i)});if(BH)bhDraw()}
+  if(main){STN.forEach((s,i)=>{if(vis(s.sx,s.sy,600*STS))stationDraw(s,i)});if(BH)bhDraw()}
   if(main)for(const t of TR){if(!vis(t.x,t.y,t.rad+80,0))continue;drawShip3(t,t.x,t.y,t.ang,t.rad,t.cls,'P',t.spd,1,0,PAL_T,TR_TINT[t.ti]);
     const bl=Math.sin(tmr*3+t.sk*20)>.55,l=sw(t.x,t.y,t.ang,-t.rad*.8,0),r2=sw(t.x,t.y,t.ang,t.rad*.8,0);
     bill(CELL.glow,l[0],12,l[1],t.rad*.35,[1,.25,.25],.8);bill(CELL.glow,r2[0],12,r2[1],t.rad*.35,[.25,1,.4],.8);if(bl)bill(CELL.glow,t.x,14,t.y,t.rad*.7,[1,1,1],.9)}
@@ -2041,7 +2042,7 @@ function drawOverlay(){
   if(main){
     for(const n of NEB)if(vis(n.x,n.y,n.r+300))lab(n.name+' · '+n.diff,n.x,400,n.y,24,n.lc);
     SYS.forEach((s,i)=>{if(vis(s.x,s.y,s.R+320))lab(s.name+' · STUFE '+s.lv+(tagOf(s)?' · '+tagOf(s):''),s.x+camCA*(s.k>1?34*s.k+300:SR0+14),0,s.y+camSA*(s.k>1?34*s.k+300:SR0+14),22,s.col);
-      });STN.forEach((s,i)=>{if(vis(s.sx,s.sy,340)){const near=nearSys===i;lab('STATION '+s.name,s.sx+camCA*215,24,s.sy+camSA*215,24,near?'#44e07a':'#38d9ff');if(near)lab('Andocken möglich',s.sx+camCA*170,24,s.sy+camSA*170,16,'#44e07a');else if(zHint===i)lab(P.z>0?'Höhe anpassen: nach unten fliegen':'Höhe anpassen: nach oben fliegen',s.sx+camCA*140,24,s.sy+camSA*140,16,'#ffb347')}});
+      });STN.forEach((s,i)=>{if(vis(s.sx,s.sy,340*STS)){const near=nearSys===i;lab('STATION '+s.name,s.sx+camCA*215*STS,24*STS,s.sy+camSA*215*STS,24,near?'#44e07a':'#38d9ff');if(near)lab('Andocken möglich',s.sx+camCA*170*STS,24*STS,s.sy+camSA*170*STS,16,'#44e07a');else if(zHint===i)lab(P.z>0?'Höhe anpassen: nach unten fliegen':'Höhe anpassen: nach oben fliegen',s.sx+camCA*140*STS,24*STS,s.sy+camSA*140*STS,16,'#ffb347')}});
     PLN.forEach((q,i)=>{if(vis(q.x,q.y,q.sz+300)){lab('PLANET '+q.name+' · STUFE '+q.lv+(q.st>=0?' · STATION':''),q.x,q.sz+80,q.y,20,q.st>=0?'#7fe8ff':'#8affc8');if(nearPl===i)lab('Landen möglich',q.x,q.sz+30,q.y,16,'#44e07a')}});
     if(BH&&vis(BH.x,BH.y,200))lab('SCHWARZES LOCH',BH.x+camCA*110,30,BH.y+camSA*110,18,'#d9a8ff');
     for(const f of FLR){if(f.age>=f.warn||!vis(SYS[f.si].x,SYS[f.si].y,SYS[f.si].R+320))continue;const s=SYS[f.si],p=.5+.5*Math.sin(tmr*14);
@@ -2077,7 +2078,7 @@ function drawRadar(){
   if(WORLD==='main'){const cs=curSys();let spl=cs>=0&&SYS[cs].pz?PLN.filter(z=>z.si===cs&&z.max).map(z=>({x:z.cx,y:z.cy,r:z.r1,num:z.num})):cs>=0&&SYS[cs].sp?SYS[cs].sp:null;if(!spl)for(const n of NEB)if(n.sp&&Math.hypot(P.x-n.x,P.y-n.y)<n.r)spl=n.sp.map(q=>({x:q.x,y:q.y,num:n.num}));if(spl)spl.forEach((q,qi)=>{let [dx,dy]=rt((q.x-P.x)*k,(q.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-9,out=d>m;if(out){dx*=m/d;dy*=m/d}
     const col=qi?'#9a0018':'#ff2a2a';
     if(!out){c.strokeStyle=col;c.globalAlpha=.55;c.lineWidth=1.5;c.beginPath();c.arc(R+dx,R+dy,(q.r||SPAWN_R)*k,0,TAU);c.stroke();c.globalAlpha=1}
-    c.fillStyle=col;c.strokeStyle=qi?'#ff6a7a':'#ffb0b0';c.lineWidth=1.2;c.beginPath();c.arc(R+dx,R+dy,qi?4.5:3.2,0,TAU);c.fill();c.stroke();if(q.num){c.save();c.fillStyle='#ff3030';c.strokeStyle='rgba(0,0,0,.85)';c.lineWidth=2.5;c.font='700 12px "Chakra Petch",sans-serif';c.textAlign='center';c.strokeText(q.num,R+dx,R+dy-7);c.fillText(q.num,R+dx,R+dy-7);c.restore()}})}
+    if(q.num){c.save();c.fillStyle='#ff3030';c.strokeStyle='rgba(0,0,0,.9)';c.lineWidth=5;c.lineJoin='round';c.font='700 36px "Chakra Petch",sans-serif';c.textAlign='center';c.textBaseline='middle';c.strokeText(q.num,R+dx,R+dy);c.fillText(q.num,R+dx,R+dy);c.restore()}else{c.fillStyle=col;c.strokeStyle=qi?'#ff6a7a':'#ffb0b0';c.lineWidth=1.2;c.beginPath();c.arc(R+dx,R+dy,qi?4.5:3.2,0,TAU);c.fill();c.stroke()}})}
   if(WORLD==='main')for(const z of PLN){let [dx,dy]=rt((z.x-P.x)*k,(z.y-P.y)*k);const d=Math.hypot(dx,dy),m=R-9;if(d>m){dx*=m/d;dy*=m/d}c.fillStyle=z.st>=0?'#7fe8ff':'#8affc8';c.beginPath();c.arc(R+dx,R+dy,d>m?2.5:4,0,TAU);c.fill()}
   c.fillStyle='#ff4d4d';
   for(const e of E){const [dx,dy]=rt((e.x-P.x)*k,(e.y-P.y)*k);if(dx*dx+dy*dy>(R-6)*(R-6))continue;const r=2.5+ct(e);c.fillStyle=e.boss?'#ffd04a':e.kb?'#d070ff':e.al?'#5dffb0':e.wp==='flame'?'#ff9a2a':e.wp==='bolt'?'#c9b3ff':'#ff4d4d';c.beginPath();c.arc(R+dx,R+dy,r,0,TAU);c.fill();const dzp=e.z-P.z;if(dzp>90||dzp<-90){const sg=dzp>0?-1:1,y0=R+dy+sg*(r+1.5);c.beginPath();c.moveTo(R+dx-3,y0);c.lineTo(R+dx+3,y0);c.lineTo(R+dx,y0+sg*4);c.closePath();c.fill()}}
@@ -2105,7 +2106,7 @@ function drawMap(){if(WORLD==='abyss')return drawMapAby();
     m.fillStyle=s.col;m.beginPath();m.arc(s.x*k,s.y*k,5,0,TAU);m.fill();
     m.font='700 14px "Chakra Petch",sans-serif';m.fillText(s.name,s.x*k,s.y*k-s.R*k-18);
     m.font='600 12px "Rajdhani",sans-serif';m.fillStyle='#9fb6c8';m.fillText('Stufe '+s.lv+(tagOf(s)?' · '+tagOf(s).toLowerCase():'')+' · '+(s.n||0)+'/'+s.max+(s===SYS[BOSSI]?bossTag():s===SYS[KBI]?kbTag():''),s.x*k,s.y*k-s.R*k-5);
-    });STN.forEach(s=>{m.fillStyle='#38d9ff';m.fillRect(s.sx*k-3,s.sy*k-3,6,6)});PLN.forEach(z=>{m.fillStyle=z.st>=0?'#7fe8ff':'#8affc8';m.beginPath();m.arc(z.x*k,z.y*k,1.8,0,TAU);m.fill()});const spn=(x,y,n)=>{m.fillStyle='#ff3030';m.beginPath();m.arc(x*k,y*k,2.4,0,TAU);m.fill();m.font='700 11px "Chakra Petch",sans-serif';m.textAlign='center';m.lineWidth=3;m.strokeStyle='rgba(5,10,22,.9)';m.strokeText(n,x*k,y*k-5);m.fillText(n,x*k,y*k-5)};PLN.forEach(z=>spn(z.cx,z.cy,z.num));NEB.forEach(n=>{if(n.sp&&n.num)spn(n.sp[0].x,n.sp[0].y,n.num)});m.fillStyle='#ff3030';m.font='600 12px "Rajdhani",sans-serif';m.textAlign='left';m.fillText('Rote Zahlen = NPC-Spawnpunkte, 1 schwach bis '+SPN_N+' stark',10,612);m.textAlign='center';
+    });STN.forEach(s=>{m.fillStyle='#38d9ff';m.fillRect(s.sx*k-3,s.sy*k-3,6,6)});PLN.forEach(z=>{m.fillStyle=z.st>=0?'#7fe8ff':'#8affc8';m.beginPath();m.arc(z.x*k,z.y*k,1.8,0,TAU);m.fill()});const spn=(x,y,n)=>{m.save();m.fillStyle='#ff3030';m.font='700 33px "Chakra Petch",sans-serif';m.textAlign='center';m.textBaseline='middle';m.lineWidth=6;m.lineJoin='round';m.strokeStyle='rgba(5,10,22,.9)';m.strokeText(n,x*k,y*k);m.fillText(n,x*k,y*k);m.restore()};PLN.forEach(z=>spn(z.cx,z.cy,z.num));NEB.forEach(n=>{if(n.sp&&n.num)spn(n.sp[0].x,n.sp[0].y,n.num)});m.fillStyle='#ff3030';m.font='600 12px "Rajdhani",sans-serif';m.textAlign='left';m.fillText('Rote Zahlen = NPC-Spawnpunkte, 1 schwach bis '+SPN_N+' stark',10,612);m.textAlign='center';
   if(BH){m.fillStyle='#c06bff';m.beginPath();m.arc(BH.x*k,BH.y*k,6,0,TAU);m.fill();m.strokeStyle='#c06bff';m.lineWidth=2;m.beginPath();m.arc(BH.x*k,BH.y*k,11,0,TAU);m.stroke()}
   m.save();m.translate(P.x*k,P.y*k);m.rotate(P.ang+1.5708);m.fillStyle='#44e07a';m.beginPath();m.moveTo(0,-9);m.lineTo(6,7);m.lineTo(-6,7);m.closePath();m.fill();m.restore();m.fillStyle='#9fb6c8';m.font='600 13px "Rajdhani",sans-serif';m.textAlign='left';m.fillText('HÖHE Z '+Math.round(P.z/10)+'  (Bereich ±'+ZR/10+')',10,630);
 }
