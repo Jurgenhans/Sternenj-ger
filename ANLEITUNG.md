@@ -10,11 +10,14 @@ Die Kamera lässt sich zoomen: Tasten + und − am linken Bildschirmrand (gedrü
 
 Das Spielfeld hat außerdem eine Höhe (Z-Achse, ±60 Einheiten auf der Anzeige): Mit den Tasten ▲ HOCH und ▼ RUNTER am rechten Bildschirmrand (Tastatur: Leertaste / Umschalt) fliegst du nach oben und unten. Gegner, Geschosse und Beute haben ebenfalls eine Höhe, Stationen und Sonnen liegen auf Höhe 0. Dünne Linien zeigen, wie hoch ein Objekt über oder unter der Spielebene schwebt.
 
-## Die Welt: 3 Sonnensysteme
+## Die Welt: 4 Sonnensysteme
 
 - **HELIOS (System 1):** 9 Planeten, 2 Stationen (innen und weiter außen), Asteroidengürtel. Jeder Planet hat die NPC-Schiffe eines der früheren neun Systeme (von innen nach außen immer stärker, Planet IX mit Aliens).
 - **NEMESIS (System 2):** 15 Planeten mit stärkeren NPCs als in HELIOS. 2 Stationen, an Planet IV und Planet XI. NPCs lassen **goldene Module der Stufe V** fallen. Sie sind genau doppelt so stark wie Stufe IV (Frostfeld höchstens 95 %), nicht kaufbar, und lassen sich in der Station einbauen und aufwerten.
 - **ZENITH (System 3):** das kleine Wächter-System mit Boss, Schwarzem Loch und Abgrund.
+- **CRIMSON (System 4):** liegt ganz unten rechts auf der Karte. Dunkelrote Sonne, sehr viel dunkelroter Nebel, 5 sehr große Planeten mit Ringen. Jeder Planet hat genau einen NPC-Spawnpunkt (Nummern 28 bis 32 = die stärksten der Welt). Die **Phantom-Schiffe** dort sind sehr stark, nutzen die Schiffsmodelle des Spielers (Fregatte, Kreuzer, Schlachtschiff, Dreadnought, Raubvogel) in dunklen Rottönen sowie die bekannten NPC-Modelle, und lassen goldene Module der Stufe V fallen. Es gibt dort keine Station.
+- **Portale:** In NEMESIS (nahe der Sonne) und in CRIMSON (nahe der Sonne) steht je ein Portal. Hineinfliegen bringt dich zum Portal im anderen System. Beide sind auf der Karte und im Radar markiert. Der Warp endet kurz vor dem Portal.
+- **Startguthaben:** Ein neues Spiel beginnt mit 1.000.000 CR (bestehende Spielstände behalten ihr Guthaben).
 - Die beiden großen Systeme sind doppelt so groß wie zuvor, die Planeten sind entsprechend weiter verteilt.
 - **Planeten:** Es gibt sie in dunklem Rot, Grün, Schwarz, Grau, Lila und Blau. Auf jedem Planeten kann man landen (Knopf LANDEN in der Nähe), aussteigen und im Tresor lagern. Die Spielwelt beim Aussteigen ist auf allen Planeten dieselbe; Tresor und Munitionskiste gehören je Planet.
 - **NPC-Spawnpunkte** liegen weit weg von Planeten, Planeten-Asteroiden, Gürteln und Stationen (rote Kreise im Radar und auf der Karte, rot nummeriert von 1 = schwach bis stark). An etwa 40 % davon liegen viele Asteroiden und Kristalle sowie gemischter Nebel (rot, blau, grün).
