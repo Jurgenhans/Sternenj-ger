@@ -1349,7 +1349,7 @@ function prog(vs,fs,attrs){
   return{p,u};
 }
 const LP=prog(
- 'attribute vec3 aP;attribute vec3 aN;attribute vec4 aC;uniform mat4 uVP;uniform mat4 uM;uniform vec3 uCam;uniform float uCu;uniform vec2 uCc;uniform float uCr;uniform vec3 uCp;uniform vec3 uCn;varying vec3 vN;varying vec4 vC;varying vec3 vE;varying vec3 vO;varying vec3 vNo;void main(){vec4 w=uM*vec4(aP,1.);vec2 cq=w.xz-uCc;float r2=dot(cq,cq);if(uCr>0.){vec3 dd=w.xyz-uCp;vec3 pp=dd-uCn*dot(dd,uCn);float q2=dot(pp,pp);if(q2>uCr*uCr*.81)w.xyz=uCp-uCn*uCr;else w.xyz-=uCn*(uCr-sqrt(uCr*uCr-q2));}else w.y-=r2*uCu;vN=(uM*vec4(aN,0.)).xyz;vC=aC;vE=uCam-w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;}',
+ 'attribute vec3 aP;attribute vec3 aN;attribute vec4 aC;uniform mat4 uVP;uniform mat4 uM;uniform vec3 uCam;uniform float uCu;uniform vec2 uCc;uniform float uCr;uniform vec3 uCp;uniform vec3 uCn;uniform vec3 uCa;uniform vec3 uCb;varying vec3 vN;varying vec4 vC;varying vec3 vE;varying vec3 vO;varying vec3 vNo;void main(){vec4 w=uM*vec4(aP,1.);vec2 cq=w.xz-uCc;float r2=dot(cq,cq);if(uCr>0.){vec3 dd=w.xyz-uCp;vec3 pp=dd-uCn*dot(dd,uCn);float q2=dot(pp,pp);float hh=sqrt(max(uCr*uCr-q2,0.))*1.04;if(q2>uCr*uCr*.9||abs(dot(dd,uCa))>hh||abs(dot(dd,uCb))>hh)w.xyz=uCp-uCn*uCr;else w.xyz-=uCn*(uCr-sqrt(uCr*uCr-q2));}else w.y-=r2*uCu;vN=(uM*vec4(aN,0.)).xyz;vC=aC;vE=uCam-w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;}',
  '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nvarying vec3 vN;varying vec4 vC;varying vec3 vE;varying vec3 vO;varying vec3 vNo;uniform sampler2D uRu;uniform float uTx;uniform float uTs;uniform vec3 uL;uniform vec3 uTint;uniform vec3 uAmb;uniform float uFl;uniform float uA;uniform float uEm;uniform float uPl;uniform float uFg;uniform vec3 uFgC;void main(){vec3 n=normalize(vN);float d=max(dot(n,uL),0.);float rim=pow(1.-max(dot(n,normalize(vE)),0.),2.5);vec3 base=vC.rgb*uTint;if(uTx>.5){vec3 w=pow(abs(normalize(vNo)),vec3(4.));w/=(w.x+w.y+w.z);vec3 tx=texture2D(uRu,vO.zy*uTs).rgb*w.x+texture2D(uRu,vO.xz*uTs).rgb*w.y+texture2D(uRu,vO.xy*uTs).rgb*w.z;float k=clamp(dot(vC.rgb,vec3(.3,.59,.11))/.385,.55,1.5);base=mix(base,tx*k*uTint,1.-step(.5,vC.a));}if(uPl>.5){vec3 pp=normalize(vO);vec2 uv=vec2(atan(pp.z,pp.x)*.15915494+.5,asin(clamp(pp.y,-1.,1.))*.31830989+.5);base=texture2D(uRu,uv).rgb*uTint;}vec3 lit=base*(uAmb+vec3(1.,.97,.92)*d*.95)+base*rim*.3+vec3(.2,.35,.55)*rim*.1;vec3 c=mix(lit,base*1.2,clamp(vC.a+uEm,0.,1.));c=mix(c,vec3(1.),uFl);float fg=clamp(length(vE)*uFg,0.,1.);c=mix(c,uFgC,fg*fg);gl_FragColor=vec4(c,uA);}',
  ['aP','aN','aC']);
 const SP=prog(
@@ -1969,32 +1969,42 @@ function ringDraw(px,pz,sz,rg){
   for(let j=0;j<PN;j++){const h=(j*0.61803)%1,th=j/PN*TAU+tmr*.012*(1+h*.4)+rg.ph,rr=(rg.in+(rg.out-rg.in)*(.1+.8*((j*7)%PN)/PN))*sz,q=ringPt(rg,px,pz,rr,th),c=B[j%3];
     bill(CELL.glow,q[0],q[1],q[2],sz*(.22+.2*h),c,.13+.08*Math.sin(tmr*.6+j))}
 }
-/* Planet 1 (HELIOS I): Oberfläche mit Deckungen, Gelände und NPCs ist schon aus dem Weltall zu sehen.
-   Das Landeplatz-Gelände liegt als gekrümmter Flicken auf der Seite des Planeten, die dem NPC-Spawnpunkt 1 zugewandt ist. */
-function surfDraw(cx,cz,R,L){
-  const dd=Math.hypot(P.x-cx,P.y-cz);if(dd>8*R)return;
+/* Planet 1 (HELIOS I): Der ganze Planet ist die Spielwelt. Die Oberfläche besteht aus 6 gekrümmten Würfel-Flächen,
+   auf jede wird das Gelände (Bäume, Deckungen, Kuppel, NPCs) gelegt; der Boden hat die dunkelrote Planetenfarbe. */
+const PTINT=[1.15,.2,.18],SFN=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+function surfOn(cx,cz,R){
+  const dd=Math.hypot(P.x-cx,P.y-cz);if(dd>8*R)return false;
   if(!WK){buildWalk(0);if(!WE)WE=Array.from({length:28},(_,i)=>{const e={g:i>=14&&i<24,r:i>=18};wSpawnE(e,false);return e})}
-  if(!WK||dd>5*R)return;
-  const z0=PLN[0];let a=Math.atan2(z0.cy-cz,z0.cx-cx);if(Math.hypot(z0.cx-cx,z0.cy-cz)<.3*R)a=Math.atan2(SYS[0].y-cz,SYS[0].x-cx);
-  const nx=Math.cos(a),nz=Math.sin(a);if((P.x-cx)*nx+(P.y-cz)*nz<-.3*R)return;
-  const sc=.4,ox=OFX,oz=OFZ,yo=YO,Cx=cx+nx*R,Cz=cz+nz*R;
-  /* Flicken-Matrix: lokal x = Tangente, lokal y (oben) = Normale nach außen, lokal z = Höhe */
-  const MP=new Float32Array([-nz*sc,0,nx*sc,0, nx*sc,0,nz*sc,0, 0,sc,0,0, Cx-ox,yo,Cz-oz,1]);
-  gl.uniform1f(LP.u.uCr,R);gl.uniform3f(LP.u.uCp,Cx-ox,yo,Cz-oz);gl.uniform3f(LP.u.uCn,nx,0,nz);
-  drawMesh(WK.m,MP,null,0,1,0,L);
-  OFX=OFZ=YO=0;
-  for(const e of WE){if(e.dead>0||Math.hypot(e.x,e.z)*sc>R*.85)continue;e.ph+=.1;const q=e.r?(e.g?2.5:2.2):(e.g?1.85:1.5),bob=Math.abs(Math.sin(e.ph))*2;
-    drawMesh(e.r?WA.sh:WA.en,m4.mul(MP,model(e.x,wgH(e.x,e.z)+(e.r?0:bob),e.z,-e.ang,0,0,q,q,q)),null,0,1,0,L)}
-  OFX=ox;OFZ=oz;YO=yo;
-  drawMesh(WK.g,MP,null,0,.27,0,L);
-  gl.uniform1f(LP.u.uCr,0);
+  return !!WK&&dd<=5*R;
+}
+function surfDraw(cx,cz,R,L){
+  const sc=.4,ox=OFX,oz=OFZ,yo=YO,vx=P.x-cx,vy=P.z,vz=P.y-cz,vl=Math.hypot(vx,vy,vz)||1,hz=R/vl-.08,ND=[vx/vl,vy/vl,vz/vl];
+  for(const n of SFN){
+    const t1=n[1]?[1,0,0]:[0,1,0],t2=[n[1]*t1[2]-n[2]*t1[1],n[2]*t1[0]-n[0]*t1[2],n[0]*t1[1]-n[1]*t1[0]];
+    let vis=false;for(const [a,b] of [[0,0],[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]]){
+      const d=[n[0]+t1[0]*a+t2[0]*b,n[1]+t1[1]*a+t2[1]*b,n[2]+t1[2]*a+t2[2]*b],l=Math.hypot(d[0],d[1],d[2]);
+      if((d[0]*ND[0]+d[1]*ND[1]+d[2]*ND[2])/l>hz){vis=true;break}}
+    if(!vis)continue;
+    const Cx=cx+n[0]*R,Cy=n[1]*R,Cz=cz+n[2]*R;
+    /* lokal x = Tangente 1, lokal y (oben) = Normale nach außen, lokal z = Tangente 2 */
+    const MP=new Float32Array([t1[0]*sc,t1[1]*sc,t1[2]*sc,0, n[0]*sc,n[1]*sc,n[2]*sc,0, t2[0]*sc,t2[1]*sc,t2[2]*sc,0, Cx-ox,Cy+yo,Cz-oz,1]);
+    gl.uniform1f(LP.u.uCr,R);gl.uniform3f(LP.u.uCp,Cx-ox,Cy+yo,Cz-oz);gl.uniform3f(LP.u.uCn,n[0],n[1],n[2]);gl.uniform3f(LP.u.uCa,t1[0],t1[1],t1[2]);gl.uniform3f(LP.u.uCb,t2[0],t2[1],t2[2]);
+    drawMesh(WK.m,MP,PTINT,0,1,0,L);
+    OFX=OFZ=YO=0;
+    for(const e of WE){if(e.dead>0)continue;const p1=e.x*sc,p2=e.z*sc,q2=p1*p1+p2*p2;if(q2>R*R*.8)continue;const h=Math.sqrt(R*R-q2);if(Math.abs(p1)>h||Math.abs(p2)>h)continue;
+      e.ph+=.1/6;const q=e.r?(e.g?2.5:2.2):(e.g?1.85:1.5),bob=Math.abs(Math.sin(e.ph))*2;
+      drawMesh(e.r?WA.sh:WA.en,m4.mul(MP,model(e.x,wgH(e.x,e.z)+(e.r?0:bob),e.z,-e.ang,0,0,q,q,q)),null,0,1,0,L)}
+    OFX=ox;OFZ=oz;YO=yo;
+    drawMesh(WK.g,MP,null,0,.27,0,L);
+    gl.uniform1f(LP.u.uCr,0);
+  }
 }
 function sysDraw(s){
   const sc=hf(s.col);
   const sr=34*s.k*(s.sun?1.4:1),sgc=s.sun?s.sun.glow:sc,sht=s.sun?s.sun.hot:[1,.97,.9];
   drawMesh(SPH,model(s.x,0,s.y,tmr*.05,0,0,sr,sr,sr),s.sun?s.sun.core:[1,.97,.9],0,1,1);
   for(const p of s.pl){const a=p.o+tmr*p.sp,px=s.x+Math.cos(a)*p.r,pz=s.y+Math.sin(a)*p.r,L=[s.x-px,60*s.k,s.y-pz],ln=Math.hypot(L[0],L[1],L[2]),col=hslc(p.hue,.55,.55);
-    const pt=s.pz&&PLT.ready;drawMesh(pt?PLM:SPH,model(px,0,pz,tmr*(pt?.04:.2)+p.o,.3,0,p.sz,p.sz,p.sz),s.pz?p.tint:col,0,1,0,[L[0]/ln,L[1]/ln,L[2]/ln]);if(p.zi===0)surfDraw(px,pz,p.sz,[L[0]/ln,L[1]/ln,L[2]/ln]);
+    const pt=s.pz&&PLT.ready,sf=p.zi===0&&surfOn(px,pz,p.sz),LL=[L[0]/ln,L[1]/ln,L[2]/ln];if(sf)surfDraw(px,pz,p.sz,LL);else drawMesh(pt?PLM:SPH,model(px,0,pz,tmr*(pt?.04:.2)+p.o,.3,0,p.sz,p.sz,p.sz),s.pz?p.tint:col,0,1,0,LL);
     bill(CELL.glow,px,0,pz,p.sz*1.7,s.pz?p.gl:col,.22);if(p.ring)ringDraw(px,pz,p.sz,p.ring);
     circ(s.x,s.y,p.r,.5,s.k>1?2*s.k/6:2,[.47,.67,.78],.16,0)}
   const sa=s.sun?.45:1;bill(CELL.glow,s.x,6,s.y,300*s.k,sgc,.9*sa);bill(CELL.glow,s.x,8,s.y,130*s.k,sht,s.sun?.7:.9);bill(CELL.glow,s.x,2,s.y,700*s.k,sgc,.2*sa);
@@ -2764,7 +2774,7 @@ function renderWalk(){
   {const sx=ex+WL[0]*120000,sy=ey+WL[1]*120000,sz=ez+WL[2]*120000;bill(CELL.glow,sx,sy,sz,24000,TH.sun,.35);bill(CELL.glow,sx,sy,sz,8000,[1,.97,.85],1);flushSpr(ATLAS)}
   gl.disable(gl.BLEND);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);
   setLit();gl.uniform3f(LP.u.uAmb,TH.amb[0],TH.amb[1],TH.amb[2]);gl.uniform1f(LP.u.uFg,1/4300);gl.uniform3f(LP.u.uFgC,WHZ[0],WHZ[1],WHZ[2]);gl.uniform1f(LP.u.uCu,WCU);
-  for(const ox of [-WWD,0,WWD])for(const oz of [-WWD,0,WWD])if(Math.abs(wx-ox)<WH+WVIS&&Math.abs(wz-oz)<WH+WVIS)drawMesh(WK.m,ox||oz?model(ox,0,oz,0,0,0,1,1,1):ID4,null,0,1,0,WL);
+  for(const ox of [-WWD,0,WWD])for(const oz of [-WWD,0,WWD])if(Math.abs(wx-ox)<WH+WVIS&&Math.abs(wz-oz)<WH+WVIS)drawMesh(WK.m,ox||oz?model(ox,0,oz,0,0,0,1,1,1):ID4,LDX&&LDX.si===0?PTINT:null,0,1,0,WL);
   {const s=wsr(),sh=SHIPM.P[P.cls];drawMesh(sh,model(wnx(0,wx),wgH(0,0)+s*.7,wnx(0,wz),.6,0,0,s,s,s),null,0,1,0,WL)}
   if(WE&&!LM)for(const e of WE){if(e.dead>0||whd(e.x,e.z,wx,wz)>4400)continue;const ex2=wnx(e.x,wx),ez2=wnx(e.z,wz);const sz=e.r?(e.g?2.5:2.2):(e.g?1.85:1.5),bob=Math.abs(Math.sin(e.ph))*2;drawMesh(e.r?WA.sh:WA.en,model(ex2,wgH(e.x,e.z)+(e.r?0:bob),ez2,-e.ang,0,0,sz,sz,sz),null,e.hit>0?.6:0,1,0,WL)}
   drawMesh(WA.ch,model(wnx(BX,wx),wgH(BX,BZ)+4+(wChest?0:Math.sin(tmr*2)*1.5),wnx(BZ,wz),tmr*.5,0,0,2,2,2),wChest?[.45,.4,.4]:null,0,1,0,WL);
