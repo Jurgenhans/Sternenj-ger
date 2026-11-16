@@ -1999,13 +1999,15 @@ function ringBuild(sz,rg){
 }
 function ringDraw(px,pz,sz,rg){
   if(!rg.mesh){const o=ringBuild(sz,rg);rg.mesh=o.mesh;rg.rocks=o.rocks}
-  if(!vis(px,pz,rg.out*sz*1.1))return;
-  const RS=rg.rocks;
-  for(let i=0;i<RS.length;i++){const k=RS[i],th=k.th+tmr*k.sp,cth=Math.cos(th),sth=Math.sin(th),
-      q=ringRot(rg,k.r*cth,k.y,k.r*sth),wx=px+q[0],wz=pz+q[2];
-    if(!vis(wx,wz,k.q*2,q[1]))continue;
+  /* Kein Nahbereichs-Test wie bei vis(): Ring und Felsen sind wie die Planeten schon von weitem sichtbar.
+     Gezeichnet wird, was im Bild liegt und mindestens ~1 Pixel groß ist. */
+  const RS=rg.rocks,ct=Math.cos(rg.t),st=Math.sin(rg.t),ca=Math.cos(rg.a),sa=Math.sin(rg.a),fl=ch*1.04;
+  for(let i=0;i<RS.length;i++){const k=RS[i],th=k.th+tmr*k.sp,lx=k.r*Math.cos(th),lz=k.r*Math.sin(th),z1=k.y*st+lz*ct,
+      wy=k.y*ct-lz*st,wx=px+lx*ca-z1*sa,wz=pz+lx*sa+z1*ca,pp=proj(wx,wy,wz);
+    if(!pp)continue;const rp=k.q*fl/pp[2];if(rp<.9)continue;const m=rp*1.6+24;
+    if(pp[0]<-m||pp[0]>cw+m||pp[1]<-m||pp[1]>ch+m)continue;
     const c=rg.cols[k.c],tn=[.75+.5*c[0],.75+.5*c[1],.75+.5*c[2]];
-    drawMesh(ROCK[k.k],model(wx,q[1],wz,k.rot+tmr*.1*k.sv,tmr*.06*k.sv+i,i*.7,k.q,k.q,k.q*(.8+.3*((i*7)%5)/5)),tn)}
+    drawMesh(ROCK[k.k],model(wx,wy,wz,k.rot+tmr*.1*k.sv,tmr*.06*k.sv+i,i*.7,k.q,k.q,k.q*(.8+.3*((i*7)%5)/5)),tn)}
   drawMesh(rg.mesh,model(px,0,pz,0,0,0,1,1,1),[1,1,1],0,.4,.25);
   const N=72,B=rg.cols,w=(rg.out-rg.in)/3;
   for(let b=0;b<3;b++){
