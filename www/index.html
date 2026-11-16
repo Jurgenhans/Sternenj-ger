@@ -342,7 +342,7 @@ const SYS=[
   /* System 4 (ganz unten rechts auf der Karte): dunkelrote Sonne, sehr viel Nebel, 5 sehr große Planeten mit Ringen, je 1 NPC-Spawnpunkt, ohne Station.
      sun: Farben der Sonne, fog: Anzahl Nebelwolken, rall/rk/rc: Ringe an allen Planeten (Größe, Farbsatz), pci: Planetenfarben, belts: Asteroidengürtel, stk: Stationen an diesen Planeten */
   {name:'CRIMSON',x:32500,y:32500,lv:16,col:'#d4202c',fl:.3,bo:.3,k:SC,pz:1,np:5,orb:[500,300],psz:[45,25],
-   sun:{core:[.42,.02,.03],glow:[.42,.02,.05],hot:[.68,.08,.07]},fog:2800,nofx:1,rall:1,rk:.22,rc:[5,1,4,5,1],pci:[0,4,2,0,4],belts:[2.5],stk:[],defs:PZC}
+   sun:{core:[.42,.02,.03],glow:[.42,.02,.05],hot:[.68,.08,.07]},fog:2800,nofx:1,rall:1,rk:.22,rc:[5,1,4,5,1],pci:[0,4,2,0,4],belts:[2.5],stk:[],defs:PZC,npcx:3}
 ];
 const BOSSI=2, ALI=-1, KBI=-1; /* ALI/KBI: Alien-System und Kepler-Titan gibt es nicht mehr */
 const MIX=[[0,0,0],[0,0,0],[8,12,10],[0,0,0]]; /* nur das Wächter-System (Index 2) nutzt eine Systemmischung; die Planeten haben eigene Mischungen */
@@ -371,7 +371,7 @@ SYS.forEach((s,i)=>{
       const def=i===0?PZ1[k]:s.defs?s.defs[k]:{lv:10+Math.round(k*.75),mix:[Math.max(4,14-Math.round(k*.6)),12,4+Math.round(k*.6)],fl:.25,bo:.25,bf:1.5,gold:1};
       const x=s.x+Math.cos(o)*r,y=s.y+Math.sin(o)*r;
       const z={si:i,k,name:s.name+' '+romanN(k+1),x,y,sz,hue,ci,lv:def.lv,bf:def.bf||1,fl:def.fl||0,bo:def.bo||0,al:def.al||0,gold:def.gold||0,ec0:def.ec0||0,pw:def.pw||1,
-        mix:def.mix.map(v=>v*(i===0?3:1)),tm:3,n:0,st:-1,fx:s.nofx?false:((k*7+i)%5)<2};
+        mix:def.mix.map(v=>v*(i===0?3:(s.npcx||1))),tm:3,n:0,st:-1,fx:s.nofx?false:((k*7+i)%5)<2};
       z.max=z.mix[0]+z.mix[1]+z.mix[2];z.r0=300;z.r1=2200+Math.round(Math.sqrt(z.max)*70);z.wr=z.r1+1200;
       s.pl.push({o,r,sz,sp:0,hue,zi:PLN.length,tint,gl:tint.map(v=>Math.min(1,v*1.7+.05)),ring:(s.rall||k%2===1)?mkRing(i,k,s.rk,s.rc?s.rc[k]:undefined):null});PLN.push(z);zs.push(z);
     }
