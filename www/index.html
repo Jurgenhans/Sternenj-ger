@@ -1961,10 +1961,36 @@ function flareDraw(f){
 /* --- Systeme, Stationen, Schwarzes Loch, Abgrund --- */
 function ringPt(rg,px,pz,r,th){const x=r*Math.cos(th),z=r*Math.sin(th),y1=-z*Math.sin(rg.t),z1=z*Math.cos(rg.t),ca=Math.cos(rg.a),sa=Math.sin(rg.a);
   return[px+x*ca-z1*sa,y1,pz+x*sa+z1*ca]}
+/* Ring von der Seite: Punkt (x,y,z) im Ringsystem (y = oben) -> Weltversatz zum Planeten, mit Neigung rg.t und Drehung rg.a */
+function ringRot(rg,x,y,z){const ct=Math.cos(rg.t),st=Math.sin(rg.t),ca=Math.cos(rg.a),sa=Math.sin(rg.a),y1=y*ct-z*st,z1=y*st+z*ct;return[x*ca-z1*sa,y1,x*sa+z1*ca]}
+/* Runder 3D-Ring: drei ineinanderliegende Röhren mit ovalem Querschnitt (statt flacher Bänder) + viele Asteroiden im Ring */
+function ringBuild(sz,rg){
+  const w=(rg.out-rg.in)/3*sz,mb=newMesh(),NU=96,NV=10;
+  for(let b=0;b<3;b++){
+    const rm=(rg.in+(b+.5)*(rg.out-rg.in)/3)*sz,hw=w*.5,hh=w*.2,c=rg.cols[b];
+    const P=(u,v)=>{const a=u/NU*TAU,t=v/NV*TAU,cb=Math.cos(t),sb=Math.sin(t),ca=Math.cos(a),sa=Math.sin(a);
+      return{p:ringRot(rg,(rm+hw*cb)*ca,hh*sb,(rm+hw*cb)*sa),n:ringRot(rg,cb*hh*ca,sb*hw,cb*hh*sa)}};
+    for(let u=0;u<NU;u++)for(let v=0;v<NV;v++){const a=P(u,v),bb=P(u+1,v),cc=P(u+1,v+1),d=P(u,v+1);
+      for(const q of [a,bb,cc,a,cc,d]){const l=Math.hypot(q.n[0],q.n[1],q.n[2])||1;mb.vert(q.p,[q.n[0]/l,q.n[1]/l,q.n[2]/l],c,.25)}}
+  }
+  const rr=mulberry(Math.floor(rg.ph*1000)+7),N=1600,rocks=[];
+  for(let i=0;i<N;i++){const f=rr(),big=rr()<.08;
+    rocks.push({r:(rg.in+(rg.out-rg.in)*(.04+.92*f))*sz,th:rr()*TAU,y:(rr()-.5)*w*.9,q:sz*((big?.06:.012)+rr()*(big?.14:.03)),rot:rr()*TAU,sp:(.006+rr()*.01)*(1-f*.45),sv:(rr()-.5)*1.4,k:i%6,c:i%3})}
+  return{mesh:upload(mb),rocks}
+}
 function ringDraw(px,pz,sz,rg){
+  if(!rg.mesh){const o=ringBuild(sz,rg);rg.mesh=o.mesh;rg.rocks=o.rocks}
+  if(!vis(px,pz,rg.out*sz*1.1))return;
+  const RS=rg.rocks;
+  for(let i=0;i<RS.length;i++){const k=RS[i],th=k.th+tmr*k.sp,cth=Math.cos(th),sth=Math.sin(th),
+      q=ringRot(rg,k.r*cth,k.y,k.r*sth),wx=px+q[0],wz=pz+q[2];
+    if(!vis(wx,wz,k.q*2,q[1]))continue;
+    const c=rg.cols[k.c],tn=[.75+.5*c[0],.75+.5*c[1],.75+.5*c[2]];
+    drawMesh(ROCK[k.k],model(wx,q[1],wz,k.rot+tmr*.1*k.sv,tmr*.06*k.sv+i,i*.7,k.q,k.q,k.q*(.8+.3*((i*7)%5)/5)),tn)}
+  drawMesh(rg.mesh,model(px,0,pz,0,0,0,1,1,1),[1,1,1],0,.4,.25);
   const N=72,B=rg.cols,w=(rg.out-rg.in)/3;
   for(let b=0;b<3;b++){
-    const r0=(rg.in+b*w)*sz,r1=(rg.in+(b+1)*w)*sz,rm=(r0+r1)/2,c=B[b],a=.26;
+    const r0=(rg.in+b*w)*sz,r1=(rg.in+(b+1)*w)*sz,rm=(r0+r1)/2,c=B[b],a=.1;
     for(let i=0;i<N;i++){
       const t0=i/N*TAU,t1=(i+1)/N*TAU,f0=.75+.25*Math.sin(t0*5+rg.ph+b*2),f1=.75+.25*Math.sin(t1*5+rg.ph+b*2);
       const i0=ringPt(rg,px,pz,r0,t0),m0=ringPt(rg,px,pz,rm,t0),o0=ringPt(rg,px,pz,r1,t0),i1=ringPt(rg,px,pz,r0,t1),m1=ringPt(rg,px,pz,rm,t1),o1=ringPt(rg,px,pz,r1,t1);
