@@ -1129,6 +1129,12 @@ function updP(dt){
   P.energy=Math.min(st.en,P.energy+st.er*dt);
   if(P.cloak>0)P.cloak-=dt; if(P.cloakCd>0)P.cloakCd-=dt;
   playerFire(dt);
+  if(WORLD==='main')for(const q of SYS){const dx=P.x-q.x,dy=P.y-q.y,dz=P.z,d=Math.hypot(dx,dy,dz),lim=34*q.k*(q.sun?1.4:1)*1.05+SHIPS[P.cls].rad*.8;
+    if(d<lim){const l=d||1,nx=(d?dx:1)/l,ny=(d?dy:0)/l,nz=(d?dz:0)/l;P.x+=nx*(lim-d);P.y+=ny*(lim-d);P.z=clamp(P.z+nz*(lim-d),-ZR,ZR);
+      const vn=P.vx*nx+P.vy*ny+P.vz*nz;if(vn<0){P.vx-=vn*nx;P.vy-=vn*ny;P.vz-=vn*nz}}}
+  if(WORLD==='main')for(const q of PLN){const dx=P.x-q.x,dy=P.y-q.y,dz=P.z,d=Math.hypot(dx,dy,dz),lim=q.sz*1.04+SHIPS[P.cls].rad*.8;
+    if(d<lim){const l=d||1,nx=(d?dx:1)/l,ny=(d?dy:0)/l,nz=(d?dz:0)/l;P.x+=nx*(lim-d);P.y+=ny*(lim-d);P.z=clamp(P.z+nz*(lim-d),-ZR,ZR);
+      const vn=P.vx*nx+P.vy*ny+P.vz*nz;if(vn<0){P.vx-=vn*nx;P.vy-=vn*ny;P.vz-=vn*nz}}}
   nearPl=-1;nearSys=-1;zHint=-1;if(WORLD==='main'){let bd=1e18;PLN.forEach((q,i)=>{const d=Math.hypot(P.x-q.x,P.y-q.y,P.z);if(d<q.sz+LANDR&&d<bd){bd=d;nearPl=i}})}if(WORLD==='main')STN.forEach((s,i)=>{if(Math.hypot(P.x-s.sx,P.y-s.sy)<290*STS){if(Math.abs(P.z)<DOCKZ)nearSys=i;else zHint=i}});
 }
 const SPAWN_R=990,WARP_STOP=SPAWN_R*2.5; /* Spawnbereich der Gegner (Radius) und Warp-Abschaltradius = 2,5x */
@@ -1351,7 +1357,7 @@ function prog(vs,fs,attrs){
   return{p,u};
 }
 const LP=prog(
- 'attribute vec3 aP;attribute vec3 aN;attribute vec4 aC;uniform mat4 uVP;uniform mat4 uM;uniform vec3 uCam;uniform float uCu;uniform vec2 uCc;uniform float uCr;uniform vec3 uCp;uniform vec3 uCn;uniform vec3 uCa;uniform vec3 uCb;varying vec3 vN;varying vec4 vC;varying vec3 vE;varying vec3 vO;varying vec3 vNo;void main(){vec4 w=uM*vec4(aP,1.);vec2 cq=w.xz-uCc;float r2=dot(cq,cq);if(uCr>0.){vec3 dd=w.xyz-uCp;vec3 pp=dd-uCn*dot(dd,uCn);float q2=dot(pp,pp);float hh=sqrt(max(uCr*uCr-q2,0.))*1.04;if(q2>uCr*uCr*.9||abs(dot(dd,uCa))>hh||abs(dot(dd,uCb))>hh)w.xyz=uCp-uCn*uCr;else w.xyz-=uCn*(uCr-sqrt(uCr*uCr-q2));}else w.y-=r2*uCu;vN=(uM*vec4(aN,0.)).xyz;vC=aC;vE=uCam-w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;}',
+ 'attribute vec3 aP;attribute vec3 aN;attribute vec4 aC;uniform mat4 uVP;uniform mat4 uM;uniform vec3 uCam;uniform float uCu;uniform vec2 uCc;uniform float uCr;uniform vec3 uCp;uniform vec3 uCn;uniform vec3 uCa;uniform vec3 uCb;varying vec3 vN;varying vec4 vC;varying vec3 vE;varying vec3 vO;varying vec3 vNo;void main(){vec4 w=uM*vec4(aP,1.);vec2 cq=w.xz-uCc;float r2=dot(cq,cq);vec3 nw=(uM*vec4(aN,0.)).xyz;vN=nw;if(uCr>0.){vec3 dd=w.xyz-uCp;float h=dot(dd,uCn),a=clamp(dot(dd,uCa)/uCr,-1.3,1.3),b=clamp(dot(dd,uCb)/uCr,-1.3,1.3);vec3 dr=normalize(uCn+tan(a)*uCa+tan(b)*uCb);vec3 ea=normalize(uCa-dr*dot(uCa,dr));vec3 eb=cross(ea,dr);w.xyz=uCp-uCn*uCr+dr*(uCr+h);vN=ea*dot(nw,uCa)+dr*dot(nw,uCn)+eb*dot(nw,uCb);}else w.y-=r2*uCu;vC=aC;vE=uCam-w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;}',
  '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nvarying vec3 vN;varying vec4 vC;varying vec3 vE;varying vec3 vO;varying vec3 vNo;uniform sampler2D uRu;uniform float uTx;uniform float uTs;uniform vec3 uL;uniform vec3 uTint;uniform vec3 uAmb;uniform float uFl;uniform float uA;uniform float uEm;uniform float uPl;uniform float uFg;uniform vec3 uFgC;void main(){vec3 n=normalize(vN);float d=max(dot(n,uL),0.);float rim=pow(1.-max(dot(n,normalize(vE)),0.),2.5);vec3 base=vC.rgb*uTint;if(uTx>.5){vec3 w=pow(abs(normalize(vNo)),vec3(4.));w/=(w.x+w.y+w.z);vec3 tx=texture2D(uRu,vO.zy*uTs).rgb*w.x+texture2D(uRu,vO.xz*uTs).rgb*w.y+texture2D(uRu,vO.xy*uTs).rgb*w.z;float k=clamp(dot(vC.rgb,vec3(.3,.59,.11))/.385,.55,1.5);base=mix(base,tx*k*uTint,1.-step(.5,vC.a));}if(uPl>.5){vec3 pp=normalize(vO);vec2 uv=vec2(atan(pp.z,pp.x)*.15915494+.5,asin(clamp(pp.y,-1.,1.))*.31830989+.5);base=texture2D(uRu,uv).rgb*uTint;}vec3 lit=base*(uAmb+vec3(1.,.97,.92)*d*.95)+base*rim*.3+vec3(.2,.35,.55)*rim*.1;vec3 c=mix(lit,base*1.2,clamp(vC.a+uEm,0.,1.));c=mix(c,vec3(1.),uFl);float fg=clamp(length(vE)*uFg,0.,1.);c=mix(c,uFgC,fg*fg);gl_FragColor=vec4(c,uA);}',
  ['aP','aN','aC']);
 const SP=prog(
@@ -1583,7 +1589,7 @@ function tube(x0,y0,z0,x1,y1,z1,r0,r1,col,em){
     dlv(A,n0,col,em);dlv(B,n1,col,em);dlv(C,n1,col,em);dlv(A,n0,col,em);dlv(C,n1,col,em);dlv(D,n0,col,em)}
 }
 const DS={a:new Float32Array(9*40000),n:0,b:gl.createBuffer()};
-function sv(x,y,z,u,v,r,g,b,a){if((DS.n+1)*9>DS.a.length){const o=new Float32Array(DS.a.length*2);o.set(DS.a);DS.a=o}
+function sv(x,y,z,u,v,r,g,b,a){if(WMF>=0){const m=wmapP(WMF,x,y,z);x=m[0];y=m[1];z=m[2]}if((DS.n+1)*9>DS.a.length){const o=new Float32Array(DS.a.length*2);o.set(DS.a);DS.a=o}
   const q=DS.a,i=DS.n*9;q[i]=x-OFX;q[i+1]=y+YO-(CURV?((x-EYE[0])*(x-EYE[0])+(z-EYE[2])*(z-EYE[2]))*CURV:0);q[i+2]=z-OFZ;q[i+3]=u;q[i+4]=v;q[i+5]=r;q[i+6]=g;q[i+7]=b;q[i+8]=a;DS.n++}
 const CELL={glow:0,ring:1,beam:2,white:3};
 function quadS(cell,p0,p1,p2,p3,c,a){const u0=cell*.25+.004,u1=cell*.25+.246,v0=.02,v1=.98,r=c[0],g=c[1],b=c[2];
@@ -1592,7 +1598,7 @@ function quadS(cell,p0,p1,p2,p3,c,a){const u0=cell*.25+.004,u1=cell*.25+.246,v0=
 /* Dreieck mit Farbverlauf (weiße Zelle) */
 function triS(pa,ca,pb,cb,pc,cc){const u=.875,v=.5;
   sv(pa[0],pa[1],pa[2],u,v,ca[0],ca[1],ca[2],ca[3]);sv(pb[0],pb[1],pb[2],u,v,cb[0],cb[1],cb[2],cb[3]);sv(pc[0],pc[1],pc[2],u,v,cc[0],cc[1],cc[2],cc[3])}
-let CURV=0,VP=ID4,EYE=[0,700,480],CAMR=[1,0,0],CAMU=[0,1,0],CAMF=[0,-1,0];
+let WMM=null,WMF=-1,RE=null,CURV=0,VP=ID4,EYE=[0,700,480],CAMR=[1,0,0],CAMU=[0,1,0],CAMF=[0,-1,0];
 function bill(cell,x,y,z,r,c,a){const R=CAMR,U=CAMU,rx=R[0]*r,ry=R[1]*r,rz=R[2]*r,ux=U[0]*r,uy=U[1]*r,uz=U[2]*r;
   quadS(cell,[x-rx-ux,y-ry-uy,z-rz-uz],[x+rx-ux,y+ry-uy,z+rz-uz],[x+rx+ux,y+ry+uy,z+rz+uz],[x-rx+ux,y-ry+uy,z-rz+uz],c,a)}
 function gnd(cell,x,y,z,r,c,a){quadS(cell,[x-r,y,z-r],[x+r,y,z-r],[x+r,y,z+r],[x-r,y,z+r],c,a)}
@@ -1627,11 +1633,11 @@ const vis=(x,z,r,y)=>{const k=1/Z,dh=cam.z-(y||0);if((ctrl==='free'||ctrl==='dua
 function proj(x,y,z){x-=OFX;z-=OFZ;const m=VP,w=m[3]*x+m[7]*y+m[11]*z+m[15];if(w<=1)return null;return[((m[0]*x+m[4]*y+m[8]*z+m[12])/w*.5+.5)*cw,(1-((m[1]*x+m[5]*y+m[9]*z+m[13])/w*.5+.5))*ch,w]}
 const ppu=w=>(ch*.5)/(Math.tan(.4)*w);
 function ptrs(stride,spec){gl.bindBuffer(gl.ARRAY_BUFFER,spec.b);for(const [i,n,o] of spec.a)gl.vertexAttribPointer(i,n,gl.FLOAT,false,stride,o)}
-function setLit(){gl.useProgram(LP.p);gl.uniform2f(LP.u.uCc,EYE[0],EYE[2]);gl.uniformMatrix4fv(LP.u.uVP,false,VP);gl.uniform3f(LP.u.uCam,EYE[0],EYE[1],EYE[2]);
+function setLit(){gl.useProgram(LP.p);const E=RE||EYE;gl.uniform2f(LP.u.uCc,E[0],E[2]);gl.uniformMatrix4fv(LP.u.uVP,false,VP);gl.uniform3f(LP.u.uCam,E[0],E[1],E[2]);
   gl.uniform3f(LP.u.uAmb,.34,.36,.44);gl.enableVertexAttribArray(0);gl.enableVertexAttribArray(1);gl.enableVertexAttribArray(2)}
 function litPtr(b){gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.vertexAttribPointer(0,3,gl.FLOAT,false,40,0);gl.vertexAttribPointer(1,3,gl.FLOAT,false,40,12);gl.vertexAttribPointer(2,4,gl.FLOAT,false,40,24)}
 function drawMesh(m,M,tint,fl,al,em,L){
-  litPtr(m.b);gl.uniformMatrix4fv(LP.u.uM,false,M);const t=tint||W3,l=L||LDEF;
+  litPtr(m.b);gl.uniformMatrix4fv(LP.u.uM,false,WMM?m4.mul(WMM,M):M);const t=tint||W3,l=L||LDEF;
   gl.uniform3f(LP.u.uTint,t[0],t[1],t[2]);gl.uniform1f(LP.u.uFl,fl||0);gl.uniform1f(LP.u.uEm,em||0);gl.uniform3f(LP.u.uL,l[0],l[1],l[2]);
   const a=al===undefined?1:al;gl.uniform1f(LP.u.uA,a);
   if(m.tx&&m.txt){gl.uniform1f(LP.u.uTs,m.ts||.5);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,m.txt);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(LP.u.uRu,1);gl.uniform1f(LP.u.uTx,1)}else gl.uniform1f(LP.u.uTx,0);gl.uniform1f(LP.u.uPl,m.pl&&PLT.ready?1:0);if(m.pl&&PLT.ready){gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,PLT.tex);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(LP.u.uRu,1)}
@@ -1974,7 +1980,7 @@ function ringDraw(px,pz,sz,rg){
 /* Planet 1 (HELIOS I): Der ganze Planet ist die Spielwelt. Die Oberfläche besteht aus 6 gekrümmten Würfel-Flächen,
    auf jede wird das Gelände (Bäume, Deckungen, Kuppel, NPCs) gelegt; der Boden hat die dunkelrote Planetenfarbe. */
 const SCW=1/2.6;
-function faceFr(n){const t1=n[1]?[1,0,0]:[0,1,0];return{t1,t2:[n[1]*t1[2]-n[2]*t1[1],n[2]*t1[0]-n[0]*t1[2],n[0]*t1[1]-n[1]*t1[0]]}}
+function faceFr(n){const t1=n[1]?[1,0,0]:[0,1,0];return{t1,t2:[n[2]*t1[1]-n[1]*t1[2],n[0]*t1[2]-n[2]*t1[0],n[1]*t1[0]-n[0]*t1[1]]}}
 /* Landeplatz-Datensatz: Landeplatz in der Mitte einer Seitenfläche, Schiff fliegt auf einer Kurve dorthin (w=1 gelandet, w=0 im Weltall) */
 function padRec(si,from){const q=planetPos(si),R=q.sz,vx=from.x-q.x,vz=from.y-q.y;let n=[1,0,0],b=-9;for(const c of [[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]]){const d=vx*c[0]+vz*c[2];if(d>b){b=d;n=c}}
   const thN=Math.atan2(n[2],n[0]),roN=R+SCW*(2+.7*wsr());return{si,n,cx:q.x,cz:q.y,R,thN,roN,angF:thN+Math.PI,th0:Math.atan2(vz,vx),ro0:Math.max(Math.hypot(vx,vz),roN+30),ang0:from.ang,z0:from.z||0}}
@@ -1987,15 +1993,16 @@ function drawLandShip(r,w){
   let x=nz(c[0]);const d=c[1][0]*x[0]+c[1][1]*x[1]+c[1][2]*x[2];let y=nz([c[1][0]-x[0]*d,c[1][1]-x[1]*d,c[1][2]-x[2]*d]);const z=[x[1]*y[2]-x[2]*y[1],x[2]*y[0]-x[0]*y[2],x[0]*y[1]-x[1]*y[0]];
   const sh=SHIPS[P.cls].rad/1.15,M=new Float32Array([x[0]*sh,x[1]*sh,x[2]*sh,0, y[0]*sh,y[1]*sh,y[2]*sh,0, z[0]*sh,z[1]*sh,z[2]*sh,0, ps.x-OFX,9*(1-w)+YO,ps.y-OFZ,1]);
   drawMesh(SHIPM.P[P.cls],M,null,0,1,0)}
-const PTINT=[1.15,.2,.18],SFN=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+let surfT=-1;const PTINT=[1.15,.2,.18],SFN=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
 function surfOn(cx,cz,R){
   const dd=Math.hypot(P.x-cx,P.y-cz);if(dd>8*R)return false;
-  if(!WK){buildWalk(0);if(!WE)WE=Array.from({length:28},(_,i)=>{const e={g:i>=14&&i<24,r:i>=18};wSpawnE(e,false);return e})}
+  wSO=true;if(!WK){buildWalk(0);if(!WE)WE=wMkE()}
   return !!WK&&dd<=5*R;
 }
 function surfDraw(cx,cz,R,L){
   const sc=SCW,ox=OFX,oz=OFZ,yo=YO,vx=P.x-cx,vy=9,vz=P.y-cz,vl=Math.hypot(vx,vy,vz)||1,hz=R/vl-.08,ND=[vx/vl,vy/vl,vz/vl];
-  for(const n of SFN){
+  if(WE&&surfT!==tmr){surfT=tmr;wSO=true;updNpc(Math.min(.05,fdt||.016),0)}
+  for(let fi=0;fi<6;fi++){const n=SFN[fi];
     const {t1,t2}=faceFr(n);
     let vis=false;for(const [a,b] of [[0,0],[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]]){
       const d=[n[0]+t1[0]*a+t2[0]*b,n[1]+t1[1]*a+t2[1]*b,n[2]+t1[2]*a+t2[2]*b],l=Math.hypot(d[0],d[1],d[2]);
@@ -2007,7 +2014,7 @@ function surfDraw(cx,cz,R,L){
     gl.uniform1f(LP.u.uCr,R);gl.uniform3f(LP.u.uCp,Cx-ox,Cy+yo,Cz-oz);gl.uniform3f(LP.u.uCn,n[0],n[1],n[2]);gl.uniform3f(LP.u.uCa,t1[0],t1[1],t1[2]);gl.uniform3f(LP.u.uCb,t2[0],t2[1],t2[2]);
     drawMesh(WK.m,MP,PTINT,0,1,0,L);
     OFX=OFZ=YO=0;
-    for(const e of WE){if(e.dead>0)continue;const p1=e.x*sc,p2=e.z*sc,q2=p1*p1+p2*p2;if(q2>R*R*.8)continue;const h=Math.sqrt(R*R-q2);if(Math.abs(p1)>h||Math.abs(p2)>h)continue;
+    for(const e of WE){if(e.dead>0||e.f!==fi)continue;
       e.ph+=.1/6;const q=e.r?(e.g?2.5:2.2):(e.g?1.85:1.5),bob=Math.abs(Math.sin(e.ph))*2;
       drawMesh(e.r?WA.sh:WA.en,m4.mul(MP,model(e.x,wgH(e.x,e.z)+(e.r?0:bob),e.z,-e.ang,0,0,q,q,q)),null,0,1,0,L)}
     OFX=ox;OFZ=oz;YO=yo;
@@ -2492,7 +2499,7 @@ function closeLand(){
   $('land').hidden=true;$('hud').hidden=false;P.hitT=0;mode='play'
 }
 /* --- Aussteigen: als Spielfigur auf dem Planeten laufen (nur Systeme mit walk:1) --- */
-const WSZ=2.2,WCS=80,WN=224,WWD=WCS*WN,WH=WWD/2,WPK=TAU/WWD,WCU=3e-5,WVIS=6700,WCD=135,WHZ=[.66,.8,.93],WZN=[.2,.42,.78],WL=(()=>{const l=[-.4,.75,.5],n=Math.hypot(l[0],l[1],l[2]);return l.map(v=>v/n)})();
+const WSZ=2.2,WN=224,RW=SYS[0].pl[0].sz/SCW,WH=Math.PI/4*RW,WWD=2*WH,WCS=WWD/WN,WPK=TAU/WWD,WCU=0,WVIS=6700,WCD=135,WHZ=[.66,.8,.93],WZN=[.2,.42,.78],WL=(()=>{const l=[-.4,.75,.5],n=Math.hypot(l[0],l[1],l[2]);return l.map(v=>v/n)})();
 const THEMES={
  SIRIUS:{seed:4242,bx:2500,bz:-2300,amp:1,p0:0,hl:70,g1:[.27,.5,.2],g2:[.56,.5,.27],gh:[.5,.48,.45],gd:[.3,.27,.22],trunk:[.36,.24,.14],crown:r=>[.14+r()*.12,.38+r()*.2,.14+r()*.1],cy:1.1,rock:[.45,.43,.4],cry:[[.3,.85,1],[.95,.4,.9]],
   wall:[.32,.3,.34],wtop:[.7,.15,.15],ptop:[1,.2,.15],bm:[1,.2,.15],hz:[.66,.8,.93],zn:[.2,.42,.78],amb:[.5,.53,.58],sun:[1,.9,.65],cl:[1,1,1],
@@ -2501,13 +2508,26 @@ const THEMES={
   wall:[.35,.22,.45],wtop:[.3,1,.8],ptop:[.4,1,.8],bm:[.3,1,.8],hz:[.98,.7,.5],zn:[.3,.15,.5],amb:[.58,.5,.6],sun:[1,.6,.4],cl:[1,.8,.85],
   en:{b:[.12,.3,.65],h:[.2,.55,.8],e:[.5,1,.9],l:[.05,.1,.25]},sh:{dk:[.12,.2,.5],bl:[.2,.2,.3],v:[.3,1,.8]}}
 };
-const wrp=v=>v-WWD*Math.round(v/WWD),whd=(x,z,a,b)=>Math.hypot(wrp(x-a),wrp(z-b)),wnx=(v,p)=>p+wrp(v-p);let wTrav=[0,0];
+let wSO=false,wf=0,wLF=0;const wChF=[0,0,0,0,0,0];
+const wrp=v=>wSO?v:v-WWD*Math.round(v/WWD),whd=(x,z,a,b)=>Math.hypot(wrp(x-a),wrp(z-b)),wnx=(v,p)=>p+wrp(v-p);let wTrav=[0,0];
+const wEF=(x,z)=>{const q=clamp((WH-Math.max(Math.abs(x),Math.abs(z)))/550,0,1);return q*q*(3-2*q)};
+const wD=(f,a,b)=>{const n=SFN[f],{t1,t2}=faceFr(n),u=Math.tan(clamp(a/RW,-1.3,1.3)),v=Math.tan(clamp(b/RW,-1.3,1.3)),x=n[0]+t1[0]*u+t2[0]*v,y=n[1]+t1[1]*u+t2[1]*v,z=n[2]+t1[2]*u+t2[2]*v,l=Math.hypot(x,y,z);return[x/l,y/l,z/l]};
+const wL=d=>{let f=0,m=-9;for(let i=0;i<6;i++){const n=SFN[i],q=d[0]*n[0]+d[1]*n[1]+d[2]*n[2];if(q>m){m=q;f=i}}return f};
+const wI=(f,d)=>{const n=SFN[f],{t1,t2}=faceFr(n),q=d[0]*n[0]+d[1]*n[1]+d[2]*n[2];return[RW*Math.atan((d[0]*t1[0]+d[1]*t1[1]+d[2]*t1[2])/q),RW*Math.atan((d[0]*t2[0]+d[1]*t2[1]+d[2]*t2[2])/q)]};
+function wmapP(f,x,y,z){const d=wD(f,x,z),r=RW+y;return[d[0]*r,d[1]*r,d[2]*r]}
+function wCross(nx,nz){const d0=wD(wf,wx,wz),d1=wD(wf,nx,nz),f=wL(d1),p0=wI(f,d0),p1=wI(f,d1),dy=nA(Math.atan2(p1[1]-p0[1],p1[0]-p0[0])-Math.atan2(nz-wz,nx-wx));wyaw=nA(wyaw+dy);wang=nA(wang+dy);wf=f;wChest=!!wChF[f];return p1}
+function wShipLoc(){const d=wD(wLF,0,0),n=SFN[wf],{t1,t2}=faceFr(n),q=d[0]*n[0]+d[1]*n[1]+d[2]*n[2],a=d[0]*t1[0]+d[1]*t1[1]+d[2]*t1[2],b=d[0]*t2[0]+d[1]*t2[1]+d[2]*t2[2];if(q<.05){const l=Math.hypot(a,b)||1;return[a/l*1e5,b/l*1e5]}return[RW*Math.atan(a/q),RW*Math.atan(b/q)]}
+function wShipD(){const a=wD(wf,wx,wz),b=wD(wLF,0,0);return RW*Math.acos(clamp(a[0]*b[0]+a[1]*b[1]+a[2]*b[2],-1,1))}
+function wMkE(){return Array.from({length:168},(_,k)=>{const i=k%28,e={f:Math.floor(k/28),g:i>=14&&i<24,r:i>=18};wSpawnE(e,false);return e})}
+const wFM=f=>{const n=SFN[f],{t1,t2}=faceFr(n);return new Float32Array([t1[0],t1[1],t1[2],0,n[0],n[1],n[2],0,t2[0],t2[1],t2[2],0,n[0]*RW,n[1]*RW,n[2]*RW,1])};
+const wFU=f=>{const n=SFN[f],{t1,t2}=faceFr(n);gl.uniform1f(LP.u.uCr,RW);gl.uniform3f(LP.u.uCp,n[0]*RW,n[1]*RW,n[2]*RW);gl.uniform3f(LP.u.uCn,n[0],n[1],n[2]);gl.uniform3f(LP.u.uCa,t1[0],t1[1],t1[2]);gl.uniform3f(LP.u.uCb,t2[0],t2[1],t2[2])};
+
 let TH=THEMES.SIRIUS,BX=THEMES.SIRIUS.bx,BZ=THEMES.SIRIUS.bz;
 const WPN={ar:{n:'STURMGEWEHR',dmg:20,rate:.1,mag:30,rl:1.4,mz:8.7},mg:{n:'MINIGUN',dmg:11,rate:.04,mag:150,rl:2.6,mz:12}};
 let WT=[],wwp=null,wHasMg=false,wChest=false,WM={ar:30,mg:150},wHp=100,wmag=30,wres=90,wrl=0,wHurt=0,wHm=0,wreg=0,WE=null,WP=[],wgun=false,wfire=false,wfc=0,wfl=0,welev=0,wtr=[],WK=null,WA=null,WCOL=[],WCV=[],WFX=[],WHL=null,WHT=0,WHN=-9,wx=0,wy=0,wz=0,wvy=0,wang=0,wyaw=0,wpit=.4,wpitT=.4,wph=0,wsp=0,wgr=true,wnear=false,wjump=false,wlt=-9;
 const wsr=()=>SHIPS[P.cls].rad/1.15*2.6;
 function wgH(x,z){const d=Math.hypot(wrp(x),wrp(z)),f=clamp((d-260)/500,0,1),g=f*f*(3-2*f),d2=whd(x,z,BX,BZ),f2=clamp((d2-280)/450,0,1),g2=f2*f2*(3-2*f2);
-  return g*g2*TH.amp*(70*Math.sin(x*WPK*3+1.3+TH.p0)*Math.cos(z*WPK*3+.4-TH.p0)+30*Math.sin(x*WPK*11+z*WPK*9+TH.p0*2)+9*Math.sin(x*WPK*32+1)*Math.sin(z*WPK*38+TH.p0))}
+  return g*g2*wEF(x,z)*TH.amp*(70*Math.sin(x*WPK*3+1.3+TH.p0)*Math.cos(z*WPK*3+.4-TH.p0)+30*Math.sin(x*WPK*11+z*WPK*9+TH.p0*2)+9*Math.sin(x*WPK*32+1)*Math.sin(z*WPK*38+TH.p0))}
 const wNz=(x,z)=>Math.sin(x*WPK*12+Math.sin(z*WPK*9)*2)*.5+Math.sin(z*WPK*16-x*WPK*6)*.5;
 /* --- Hilfsfunktionen: gedrehte Quader, Ringe, Bänder, Deckungs-Test für Schüsse --- */
 function rbox(mb,x,y,z,hx,hy,hz,ang,col,em){const t=newMesh();mbBox(t,0,0,0,hx,hy,hz,col,em);const cs=Math.cos(ang),sn=Math.sin(ang),v=t.v;
@@ -2529,13 +2549,13 @@ function buildWalk(si){
   const mb=newMesh(),r=mulberry(th.seed),hash=(x,z)=>{const q=Math.sin(x*127.1+z*311.7)*43758.5453;return q-Math.floor(q)};
   WCOL=[];WCV=[];WFX=[];WHL=null;WSAFE=null;
   const col=(x,z,h)=>{const n=wNz(x,z)*.5+.5,m=mixc(TH.g1,TH.g2,clamp(n*1.3-.1,0,1)),k=.9+hash(x,z)*.2,d=Math.hypot(x,z);
-    let c=mixc(m,TH.gh,clamp((h-TH.hl)/60,0,1));c=mixc(TH.gd,c,clamp((d-130)/90,0,1));return[c[0]*k,c[1]*k,c[2]*k]};
+    let c=mixc(m,TH.gh,clamp((h-TH.hl)/60,0,1));c=mixc(TH.gd,c,clamp((d-130)/90,0,1));c=mixc(mixc(TH.g1,TH.g2,.5),c,wEF(x,z));return[c[0]*k,c[1]*k,c[2]*k]};
   const g=[];
   for(let i=0;i<=WN;i++){const row=[];for(let j=0;j<=WN;j++){const x=-WH+i*WCS,z=-WH+j*WCS,h=wgH(x,z);
     let nx=-(wgH(x+8,z)-wgH(x-8,z))/16,nz=-(wgH(x,z+8)-wgH(x,z-8))/16;const l=Math.hypot(nx,1,nz);row.push({p:[x,h,z],c:col(-WH+(i%WN)*WCS,-WH+(j%WN)*WCS,h),n:[nx/l,1/l,nz/l]})}g.push(row)}
   for(let i=0;i<WN;i++)for(let j=0;j<WN;j++){const a=g[i][j],b=g[i+1][j],c=g[i+1][j+1],d=g[i][j+1];
     for(const q of [a,b,c,a,c,d])mb.vert(q.p,q.n,q.c,0)}
-  const place=(cnt,fn)=>{for(let k=0;k<cnt;k++){let x,z,t=0;do{x=(r()*2-1)*WH;z=(r()*2-1)*WH;t++}while((Math.hypot(x,z)<380||Math.hypot(x-BX,z-BZ)<340)&&t<30);fn(x,z,wgH(x,z))}};
+  const place=(cnt,fn)=>{for(let k=0;k<cnt;k++){let x,z,t=0;do{x=(r()*2-1)*(WH-700);z=(r()*2-1)*(WH-700);t++}while((Math.hypot(x,z)<380||Math.hypot(x-BX,z-BZ)<340)&&t<30);fn(x,z,wgH(x,z))}};
   {const ga=Math.atan2(-BZ,-BX),wc=TH.wall;
     for(let a=0;a<TAU;a+=28/230){if(Math.abs(nA(a-ga))<.27)continue;const x=BX+Math.cos(a)*230,z=BZ+Math.sin(a)*230;mbBox(mb,x,22,z,16,22,16,wc,0);mbBox(mb,x,46,z,17,2.5,17,TH.wtop,.4);WCOL.push([x,z,17])}
     for(const a of [.785,2.356,3.927,5.498]){const x=BX+Math.cos(a)*230,z=BZ+Math.sin(a)*230;mbBox(mb,x,55,z,9,55,9,[.25,.24,.28],0);mbBox(mb,x,116,z,8,6,8,TH.ptop,.9);WCOL.push([x,z,14])}
@@ -2571,7 +2591,7 @@ function buildWalk(si){
   /* große Felsbrocken als Deckung */
   place(110,(x,z,h)=>{const q=38+r()*24;mbSph(mb,x,h+q*.3,z,q,q*.72,q*.85,8,6,[TH.rock[0]+r()*.08,TH.rock[1]+r()*.06,TH.rock[2]],0,true,jit);WCOL.push([x,z,q*.82]);WCV.push([x,z,q*.82,h+q*.9])});
   /* Deckungs-Stellungen im ganzen Gelände */
-  for(let n=0;n<90;n++){let cx0,cz0,t=0;do{cx0=(R2()*2-1)*(WH-200);cz0=(R2()*2-1)*(WH-200);t++}while((Math.hypot(cx0-BX,cz0-BZ)<430||Math.hypot(cx0,cz0)<650)&&t<30);
+  for(let n=0;n<90;n++){let cx0,cz0,t=0;do{cx0=(R2()*2-1)*(WH-760);cz0=(R2()*2-1)*(WH-760);t++}while((Math.hypot(cx0-BX,cz0-BZ)<430||Math.hypot(cx0,cz0)<650)&&t<30);
     const cnt=3+Math.floor(R2()*3),done=[];
     for(let k=0;k<cnt;k++){let px,pz,tt=0,ok;do{const a=R2()*TAU,d=25+R2()*85;px=cx0+Math.cos(a)*d;pz=cz0+Math.sin(a)*d;ok=done.every(q=>Math.hypot(px-q[0],pz-q[1])>62);tt++}while(!ok&&tt<12);
       if(!ok)continue;done.push([px,pz]);const rn=R2();put(rn<.34?0:rn<.6?1:rn<.84?2:3,px,pz,R2()*TAU)}}
@@ -2634,7 +2654,7 @@ const dvw=(x,z,r)=>{const q=clamp(1-whd(x,z,wx,wz)/r,0,1);return q*q};
 const WTC=['#9aa7b4','#44e07a','#4aa8ff','#b45cff','#ffd04a'],WTR=[[.6,.65,.7],[.27,.88,.48],[.29,.66,1],[.7,.36,1],[1,.82,.29]];
 /* Planeten-Gegner lassen mit Chance ein Modul fallen (Frostfeld oder Waffenverstärker) */
 function wDropMod(e){const ch=e.g?.6:e.r?.3:.22;if(Math.random()>ch)return;const w=e.g?[20,35,30,15]:e.r?[45,35,17,3]:[62,28,9,1];let q=Math.random()*100,tier=1;for(let i=0;i<4;i++){if(q<w[i]){tier=i+1;break}q-=w[i]}
-  WP.push({x:e.x+14,z:e.z-10,item:mk(['slow','amp','eco'][Math.floor(Math.random()*3)],tier)})}
+  WP.push({f:e.f,x:e.x+14,z:e.z-10,item:mk(['slow','amp','eco'][Math.floor(Math.random()*3)],tier)})}
 const vlt=()=>{P.vault=P.vault||{};const k=PLN[LDX.si].name;return P.vault[k]||(P.vault[k]=[])};
 function lblLagern(){$('blagern').textContent='Lagern ('+P.cargo.length+' im Frachtraum · '+vlt().length+' im Tresor)'}
 function doLagern(){if(mode!=='land'||!LDX)return;const n=P.cargo.length;if(!n){toast('Der Frachtraum ist leer','#ffcf5a');return}vlt().push(...P.cargo.splice(0));save();lblLagern();toast(n+' Gegenstände im Tresor auf '+PLN[LDX.si].name+' gelagert','#8affc8')}
@@ -2644,9 +2664,9 @@ function setWalkSun(){let l=[-.4,.75,.5];WDAY=1;const pr=LDX&&LDX.pr;
   if(pr){const sy=SYS[0],sx=sy.x-pr.cx,sz=sy.y-pr.cz,sh=60*sy.k,f=faceFr(pr.n);l=[sx*f.t1[0]+sh*f.t1[1]+sz*f.t1[2],sx*pr.n[0]+sh*pr.n[1]+sz*pr.n[2],sx*f.t2[0]+sh*f.t2[1]+sz*f.t2[2]];WDAY=clamp(l[1]/Math.hypot(l[0],l[1],l[2])*2.2+.35,0,1)}
   const n=Math.hypot(l[0],l[1],l[2]);for(let i=0;i<3;i++)WL[i]=l[i]/n}
 function openWalk(){
-  if(mode!=='land'||!LDX)return;setWalkSun();
-  buildWalk(LDX.si);if(wPl!==LDX.si){wPl=LDX.si;WE=null;WP=[];wChest=!!wOpen[wPl];TH.opened=wChest}if(!WE)WE=Array.from({length:28},(_,i)=>{const e={g:i>=14&&i<24,r:i>=18};wSpawnE(e,false);return e});
-  wx=wsr()+70;wz=30;wTrav=[0,0];wy=wgH(wx,wz);wvy=0;wgr=true;wang=Math.PI;wyaw=Math.PI;wpit=.4;wpitT=.4;wsp=0;wnear=true;wjump=false;
+  if(mode!=='land'||!LDX)return;wSO=!!LDX.pr;wLF=wSO?SFN.findIndex(v=>v[0]===LDX.pr.n[0]&&v[1]===LDX.pr.n[1]&&v[2]===LDX.pr.n[2]):0;wf=wLF;setWalkSun();
+  buildWalk(LDX.si);if(wPl!==LDX.si){wPl=LDX.si;WE=null;WP=[];wChest=!!wOpen[wPl];TH.opened=wChest}if(!WE)WE=wMkE();
+  if(wSO)wChest=!!wChF[wf];wx=wsr()+70;wz=30;wTrav=[0,0];wy=wgH(wx,wz);wvy=0;wgr=true;wang=Math.PI;wyaw=Math.PI;wpit=.4;wpitT=.4;wsp=0;wnear=true;wjump=false;
   joy.on=false;joy.x=joy.y=0;stickEl.hidden=true;camP.on=false;
   $('land').hidden=true;$('walkui').hidden=false;$('bboard').hidden=false;$('winv').hidden=true;$('xhair').hidden=!wgun;$('bfirew').hidden=!wgun;$('brl').hidden=!wgun;wfire=false;wtr=[];mode='walk';
   cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,ov.width,ov.height);
@@ -2654,7 +2674,7 @@ function openWalk(){
 }
 function boardShip(){
   if(mode!=='walk')return;
-  if(Math.hypot(wx,wz)>wsr()*.9+95){toast('Zu weit vom Schiff entfernt','#ffcf5a');return}
+  if(Math.hypot(wx,wz)>wsr()*.9+95||(wSO&&wf!==wLF)){toast('Zu weit vom Schiff entfernt','#ffcf5a');return}
   joy.on=false;joy.x=joy.y=0;stickEl.hidden=true;camP.on=false;
   wHp=100;WM.ar=30;WM.mg=wHasMg?150:0;wmag=wwp?WM[wwp]:0;wres=Math.max(wres,90);wrl=0;wHurt=0;
   mode='land';lblLagern();$('walkui').hidden=true;$('winv').hidden=true;$('xhair').hidden=true;wfire=false;$('land').hidden=false;
@@ -2669,18 +2689,25 @@ function toggleInv(on){const h=$('winv');$('wgunsp').textContent='Vollautomatisc
 function startReload(){if(!wgun||wrl>0||wmag>=WPN[wwp].mag||wres<=0)return;wrl=WPN[wwp].rl;snd('wRl')}
 function wSpawnE(e,far){let x=0,z=0,t=0;
   if(e.g){const a=Math.random()*TAU,r=40+Math.random()*150;x=BX+Math.cos(a)*r;z=BZ+Math.sin(a)*r;e.mh=e.r?140:220}
-  else{do{const a=Math.random()*TAU,d=far?1500+Math.random()*2200:700+Math.random()*3000;x=wrp(Math.cos(a)*d+(far?wx:0));z=wrp(Math.sin(a)*d+(far?wz:0));t++}while((Math.hypot(x,z)<500||whd(x,z,BX,BZ)<500)&&t<40);e.mh=e.r?100:140}
+  else{do{const a=Math.random()*TAU,d=far?1500+Math.random()*2200:700+Math.random()*3000;const nf=far&&mode==='walk'&&(!wSO||e.f===wf);x=wrp(Math.cos(a)*d+(nf?wx:0));z=wrp(Math.sin(a)*d+(nf?wz:0));if(wSO){x=clamp(x,-WH+700,WH-700);z=clamp(z,-WH+700,WH-700)};t++}while((Math.hypot(x,z)<500||whd(x,z,BX,BZ)<500)&&t<40);e.mh=e.r?100:140}
   e.x=e.hx=wrp(x);e.z=e.hz=wrp(z);e.hp=e.mh;e.ang=Math.random()*TAU;e.hit=0;e.att=0;e.dead=0;e.ph=Math.random()*9}
 function hurtW(n){wHp-=n;wHurt=.45;wreg=5;snd('pHurtS',.9);
-  if(wHp<=0){wHp=100;wx=wsr()+70;wz=30;wvy=0;WM.ar=30;WM.mg=wHasMg?150:0;wmag=wwp?WM[wwp]:0;wres=Math.max(wres,60);wrl=0;for(const e of WE)if(!e.g&&Math.hypot(e.x,e.z)<900&&e.dead<=0)wSpawnE(e,false);toast('Du wurdest besiegt – zurück am Schiff','#ff5a5a')}}
+  if(wHp<=0){wHp=100;if(wSO){wf=wLF;wChest=!!wChF[wf]}wx=wsr()+70;wz=30;wvy=0;WM.ar=30;WM.mg=wHasMg?150:0;wmag=wwp?WM[wwp]:0;wres=Math.max(wres,60);wrl=0;for(const e of WE)if((!wSO||e.f===wLF)&&!e.g&&Math.hypot(e.x,e.z)<900&&e.dead<=0)wSpawnE(e,false);toast('Du wurdest besiegt – zurück am Schiff','#ff5a5a')}}
 function updEn(dt){
   wHurt-=dt;wHm-=dt;wreg-=dt;for(const t of WT)t.t-=dt;WT=WT.filter(t=>t.t>0);if(wreg<=0&&wHp<100)wHp=Math.min(100,wHp+5*dt);
+  updNpc(dt,1);
+
+  if(!wChest&&whd(wx,wz,BX,BZ)<58){wChest=true;wChF[wf]=1;TH.opened=true;wOpen[wPl]=true;wres=Math.min(400,wres+120);if(!wHasMg){wHasMg=true;WM.mg=150;$('wslot2').hidden=false;toast('MINIGUN gefunden! Im Inventar ausrüsten (Taste 2)','#ffd84a')}else toast('Munitionskiste: +120 Munition','#ffd84a')}
+  if(WHL&&whd(wx,wz,WHL.x,WHL.z)<50){if(tmr-WHN>12&&(wHp<100||wres<150))toast('Versorgungsterminal: Gesundheit und Munition werden aufgefüllt','#8affc8');WHN=tmr;if(wHp<100)wHp=Math.min(100,wHp+35*dt);WHT+=dt;if(WHT>.5){WHT=0;if(wres<150)wres=Math.min(150,wres+10)}}
+  for(let i=WP.length-1;i>=0;i--){const p=WP[i];if((!wSO||p.f===wf)&&whd(wx,wz,p.x,p.z)<42){WP.splice(i,1);if(p.item){const full=P.cargo.length>=cap();stash(p.item);snd('item');save();toast('Modul gefunden: '+nameOf(p.item)+(full?' (Frachtraum voll – im Stationslager)':' – im Frachtraum'),WTC[p.item.tier-1])}else{wres=Math.min(400,wres+30);snd('coin');toast('+30 Munition','#ffd84a')}}}
+}
+function updNpc(dt,act){
   for(const e of WE){
     if(e.dead>0){e.dead-=dt;if(e.dead<=0)wSpawnE(e,true);continue}
     e.hit-=dt;e.att-=dt;e.ph+=dt*6;
-    const dx=wrp(wx-e.x),dz=wrp(wz-e.z),d=Math.hypot(dx,dz);if(!e.g&&d>4600){wSpawnE(e,true);continue}let ta=e.ang,sp=0;
+    const sm=act&&(!wSO||e.f===wf),dx=sm?wrp(wx-e.x):0,dz=sm?wrp(wz-e.z):0,d=sm?Math.hypot(dx,dz):1e9;if(sm&&!e.g&&d>4600){wSpawnE(e,true);continue}let ta=e.ang,sp=0;
     e.sc=(e.sc===undefined?Math.random()*4:e.sc)-dt;if(e.sc<=0){e.sc=3+Math.random()*4;if(d<700)snd(e.r?'wCryR':'wCry',Math.max(.1,dvw(e.x,e.z,700))*(e.g?1.3:1))}
-    if(d<1000&&!(e.g&&whd(e.x,e.z,BX,BZ)>900)){ta=Math.atan2(dz,dx);sp=d>32?95:0}else{const hx=wrp(e.hx-e.x),hz=wrp(e.hz-e.z);if(Math.hypot(hx,hz)>250){ta=Math.atan2(hz,hx);sp=45}}
+    if(d<1000&&!(e.g&&whd(e.x,e.z,BX,BZ)>900)){ta=Math.atan2(dz,dx);sp=d>32?95:0}else{const hx=wrp(e.hx-e.x),hz=wrp(e.hz-e.z);if(Math.hypot(hx,hz)>250){ta=Math.atan2(hz,hx);sp=45}else if(wSO){e.wt=(e.wt||0)-dt;if(e.wt<0){e.wt=2+Math.random()*4;e.wa=Math.random()*TAU;e.wm=Math.random()<.6}if(e.wm){ta=e.wa;sp=32}}}
     e.ang=nA(e.ang+nA(ta-e.ang)*Math.min(1,dt*5));
     e.fl=(e.fl||0)-dt;
     if(e.r&&d<1000&&!(e.g&&whd(e.x,e.z,BX,BZ)>900)){
@@ -2695,25 +2722,28 @@ function updEn(dt){
           WT.push({x0:mp[0],y0:my,z0:mp[1],x1:tx,y1:ty,z1:tz,t:.12});snd('wEgun',Math.max(.15,dvw(e.x,e.z,1300)))}
       }
     }else if(sp){e.x+=Math.cos(e.ang)*sp*dt;e.z+=Math.sin(e.ang)*sp*dt}
-    e.x=wrp(e.x);e.z=wrp(e.z);for(const c of WCOL){const ax=wrp(e.x-c[0]),az=wrp(e.z-c[1]),rr=c[2]+14;if(ax>rr||ax<-rr||az>rr||az<-rr)continue;const q=Math.hypot(ax,az);if(q<rr&&q>.001){e.x=c[0]+ax/q*rr;e.z=c[1]+az/q*rr}}
+    e.x=wrp(e.x);e.z=wrp(e.z);if(wSO){e.x=clamp(e.x,-WH+200,WH-200);e.z=clamp(e.z,-WH+200,WH-200)}if(sm||!wSO)for(const c of WCOL){const ax=wrp(e.x-c[0]),az=wrp(e.z-c[1]),rr=c[2]+14;if(ax>rr||ax<-rr||az>rr||az<-rr)continue;const q=Math.hypot(ax,az);if(q<rr&&q>.001){e.x=c[0]+ax/q*rr;e.z=c[1]+az/q*rr}}
     {const rr=wsr()*.9+14,q=Math.hypot(e.x,e.z);if(q<rr&&q>.001){e.x*=rr/q;e.z*=rr/q}}
     if(!e.r&&d<34&&e.att<=0){e.att=.9;snd('wEmel');hurtW(e.g?14:9)}
   }
-  if(!wChest&&whd(wx,wz,BX,BZ)<58){wChest=true;TH.opened=true;wOpen[wPl]=true;wres=Math.min(400,wres+120);if(!wHasMg){wHasMg=true;WM.mg=150;$('wslot2').hidden=false;toast('MINIGUN gefunden! Im Inventar ausrüsten (Taste 2)','#ffd84a')}else toast('Munitionskiste: +120 Munition','#ffd84a')}
-  if(WHL&&whd(wx,wz,WHL.x,WHL.z)<50){if(tmr-WHN>12&&(wHp<100||wres<150))toast('Versorgungsterminal: Gesundheit und Munition werden aufgefüllt','#8affc8');WHN=tmr;if(wHp<100)wHp=Math.min(100,wHp+35*dt);WHT+=dt;if(WHT>.5){WHT=0;if(wres<150)wres=Math.min(150,wres+10)}}
-  for(let i=WP.length-1;i>=0;i--){const p=WP[i];if(whd(wx,wz,p.x,p.z)<42){WP.splice(i,1);if(p.item){const full=P.cargo.length>=cap();stash(p.item);snd('item');save();toast('Modul gefunden: '+nameOf(p.item)+(full?' (Frachtraum voll – im Stationslager)':' – im Frachtraum'),WTC[p.item.tier-1])}else{wres=Math.min(400,wres+30);snd('coin');toast('+30 Munition','#ffd84a')}}}
 }
+const WHB={en:[[0,12,0,15.5,11.5,17.5],[13,13,0,9,8,9],[-8,6,15,2.4,7,2.4],[0,6,15,2.4,7,2.4],[8,6,15,2.4,7,2.4],[-8,6,-15,2.4,7,2.4],[0,6,-15,2.4,7,2.4],[8,6,-15,2.4,7,2.4]],
+ sh:[[0,9,0,2.4,3.8,3.2],[0,13.4,0,2.6,2.6,2.6],[0,3,-1.2,1.5,3.4,1.6],[0,3,1.2,1.5,3.4,1.6],[3.3,9.4,-2.4,1.4,2.8,1.4],[3.3,9.4,2.4,1.4,2.8,1.4],[2.8,9.5,0,3.4,1.2,1.2]]};
 function wRay(){
   const d=CAMF;let best=3500,tgt=null;
   for(let t=150;t<3500;t+=15){const x=EYE[0]+d[0]*t,y=EYE[1]+d[1]*t,z=EYE[2]+d[2]*t;if(y<wgH(x,z)-((x-EYE[0])*(x-EYE[0])+(z-EYE[2])*(z-EYE[2]))*WCU){best=t;break}}
   let terr=best<3500;{const cv=wCvT(EYE[0],EYE[1],EYE[2],d[0],d[1],d[2],best,150);if(cv<best){best=cv;terr=true}}
-  if(WE)for(const e of WE){if(e.dead>0)continue;const ox=wrp(e.x-EYE[0]),oz=wrp(e.z-EYE[2]),oy=wgH(e.x,e.z)+18-(ox*ox+oz*oz)*WCU-EYE[1],t=ox*d[0]+oy*d[1]+oz*d[2];if(t<100||t>best)continue;
-    const q=ox*ox+oy*oy+oz*oz-t*t,r=e.r?24:(e.g?32:26);if(q<r*r){const tt=t-Math.sqrt(r*r-q);if(tt<best){best=tt;tgt=e}}}
+  if(WE)for(const e of WE){if(e.dead>0||(wSO&&e.f!==wf))continue;
+    const q=e.r?(e.g?2.5:2.2):(e.g?1.85:1.5),ox=wrp(EYE[0]-e.x),oz=wrp(EYE[2]-e.z);if(ox*ox+oz*oz>(best+120)*(best+120))continue;
+    const oy=EYE[1]-wgH(e.x,e.z)-(e.r?0:Math.abs(Math.sin(e.ph))*2),cy=Math.cos(-e.ang),sy=Math.sin(-e.ang),
+      lo=[(cy*ox-sy*oz)/q,oy/q,(sy*ox+cy*oz)/q],ld=[(cy*d[0]-sy*d[2])/q,d[1]/q,(sy*d[0]+cy*d[2])/q];
+    for(const h of (e.r?WHB.sh:WHB.en)){const a=(lo[0]-h[0])/h[3],b=(lo[1]-h[1])/h[4],c=(lo[2]-h[2])/h[5],u=ld[0]/h[3],v=ld[1]/h[4],w=ld[2]/h[5],A=u*u+v*v+w*w,B=a*u+b*v+c*w,C=a*a+b*b+c*c-1,D=B*B-A*C;if(D<0)continue;
+      let tt=(-B-Math.sqrt(D))/A;if(tt<100)tt=(-B+Math.sqrt(D))/A;if(tt>=100&&tt<best){best=tt;tgt=e}}}
   return{best,tgt,terr}
 }
 function wShoot(){
   const W=WPN[wwp];wfc=W.rate;wfl=.05;snd(wwp==='mg'?'wMg':'wAr');const S=WSZ,d=CAMF,{best,tgt,terr}=wRay();
-  if(tgt){tgt.hp-=W.dmg;tgt.hit=.12;wHm=.15;snd('wHit',.6);if(tgt.hp<=0){snd('wEdie',Math.max(.5,dvw(tgt.x,tgt.z,1200)));tgt.dead=tgt.g?150:(tgt.r?60:25);WP.push({x:tgt.x,z:tgt.z});wDropMod(tgt)}}
+  if(tgt){tgt.hp-=W.dmg;tgt.hit=.12;wHm=.15;snd('wHit',.6);if(tgt.hp<=0){snd('wEdie',Math.max(.5,dvw(tgt.x,tgt.z,1200)));tgt.dead=tgt.g?150:(tgt.r?60:25);WP.push({x:tgt.x,z:tgt.z,f:tgt.f});wDropMod(tgt)}}
   const hx=EYE[0]+d[0]*best,hy=EYE[1]+d[1]*best,hz=EYE[2]+d[2]*best;
   const m=lw(wx,wz,wang,(2.8+W.mz*Math.cos(welev))*S,0),my=wy+(9.6+W.mz*Math.sin(welev))*S;
   wtr.push({x0:m[0],y0:my,z0:m[1],x1:hx,y1:hy,z1:hz,t:.06,hit:terr||!!tgt})
@@ -2721,7 +2751,7 @@ function wShoot(){
 function wDraw2D(){
   cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,ov.width,ov.height);cx.setTransform(dpr,0,0,dpr,0,0);
   if(wHurt>0){const g=cx.createRadialGradient(cw/2,ch/2,Math.min(cw,ch)*.3,cw/2,ch/2,Math.max(cw,ch)*.7);g.addColorStop(0,'rgba(255,0,0,0)');g.addColorStop(1,'rgba(255,0,0,'+Math.min(.6,wHurt*1.4)+')');cx.fillStyle=g;cx.fillRect(0,0,cw,ch)}
-  for(const e of WE){if(e.dead>0||e.hp>=e.mh)continue;const ex3=wnx(e.x,wx),ez3=wnx(e.z,wz),p=proj(ex3,wgH(e.x,e.z)+52-((ex3-EYE[0])*(ex3-EYE[0])+(ez3-EYE[2])*(ez3-EYE[2]))*WCU,ez3);if(!p)continue;cx.fillStyle='rgba(0,0,0,.6)';cx.fillRect(p[0]-20,p[1],40,5);cx.fillStyle='#ff5a5a';cx.fillRect(p[0]-19,p[1]+1,38*Math.max(0,e.hp/e.mh),3)}
+  for(const e of WE){if(e.dead>0||e.hp>=e.mh)continue;const ex3=wnx(e.x,wx),ez3=wnx(e.z,wz),p=wSO?(e.f===wf?proj(...wmapP(wf,e.x,wgH(e.x,e.z)+52,e.z)):null):proj(ex3,wgH(e.x,e.z)+52-((ex3-EYE[0])*(ex3-EYE[0])+(ez3-EYE[2])*(ez3-EYE[2]))*WCU,ez3);if(!p)continue;cx.fillStyle='rgba(0,0,0,.6)';cx.fillRect(p[0]-20,p[1],40,5);cx.fillStyle='#ff5a5a';cx.fillRect(p[0]-19,p[1]+1,38*Math.max(0,e.hp/e.mh),3)}
   if(wHm>0){cx.strokeStyle='#fff';cx.lineWidth=2;const x=cw/2,y=ch/2;cx.beginPath();for(const [a,b] of [[-1,-1],[1,-1],[1,1],[-1,1]]){cx.moveTo(x+a*6,y+b*6);cx.lineTo(x+a*14,y+b*14)}cx.stroke()}
   /* Minikarte: Blick nach oben = Kamerarichtung */
   const m=$('wmap').getContext('2d'),fx=Math.cos(wyaw),fz=Math.sin(wyaw),rx=-fz,rz=fx,sc=68/1500;
@@ -2730,10 +2760,10 @@ function wDraw2D(){
   m.fillStyle='rgba(2,14,22,.78)';m.beginPath();m.arc(70,70,68,0,TAU);m.fill();
   m.save();m.beginPath();m.arc(70,70,68,0,TAU);m.clip();
   m.strokeStyle='rgba(138,255,200,.25)';m.lineWidth=1;for(const q of [.33,.66]){m.beginPath();m.arc(70,70,68*q,0,TAU);m.stroke()}
-  for(const p of WP){const q=pt(p.x,p.z),s2=p.item?3:2;m.fillStyle=p.item?WTC[p.item.tier-1]:'#ffd84a';m.fillRect(q[0]-s2,q[1]-s2,s2*2,s2*2)}
-  for(const e of WE){if(e.dead>0)continue;const q=pt(e.x,e.z);m.fillStyle=e.r?'#ff5ad8':'#ff4a4a';m.beginPath();m.arc(q[0],q[1],2.6,0,TAU);m.fill()}
+  for(const p of WP){if(wSO&&p.f!==wf)continue;const q=pt(p.x,p.z),s2=p.item?3:2;m.fillStyle=p.item?WTC[p.item.tier-1]:'#ffd84a';m.fillRect(q[0]-s2,q[1]-s2,s2*2,s2*2)}
+  for(const e of WE){if(e.dead>0||(wSO&&e.f!==wf))continue;const q=pt(e.x,e.z);m.fillStyle=e.r?'#ff5ad8':'#ff4a4a';m.beginPath();m.arc(q[0],q[1],2.6,0,TAU);m.fill()}
   m.restore();
-  {const q=pt(0,0),dx=q[0]-70,dy=q[1]-70,dd=Math.hypot(dx,dy),on=dd>60,px=on?70+dx/dd*60:q[0],py=on?70+dy/dd*60:q[1];
+  {const sl=wSO?wShipLoc():[0,0],q=pt(sl[0],sl[1]),dx=q[0]-70,dy=q[1]-70,dd=Math.hypot(dx,dy),on=dd>60,px=on?70+dx/dd*60:q[0],py=on?70+dy/dd*60:q[1];
     m.fillStyle='#38d9ff';m.strokeStyle='#06101c';m.lineWidth=1;m.save();m.translate(px,py);if(on)m.rotate(Math.atan2(dy,dx)+Math.PI/2);
     m.beginPath();if(on){m.moveTo(0,-6);m.lineTo(5,4);m.lineTo(-5,4)}else{m.moveTo(0,-6);m.lineTo(6,0);m.lineTo(0,6);m.lineTo(-6,0)}m.closePath();m.fill();m.stroke();m.restore()}
   {const q=pt(BX,BZ),dx=q[0]-70,dy=q[1]-70,dd=Math.hypot(dx,dy),on=dd>60,px=on?70+dx/dd*60:q[0],py=on?70+dy/dd*60:q[1];
@@ -2741,7 +2771,7 @@ function wDraw2D(){
     m.beginPath();if(on){m.moveTo(0,-6);m.lineTo(5,4);m.lineTo(-5,4)}else m.rect(-5,-5,10,10);m.closePath();m.fill();m.stroke();m.restore()}
   {const hx=Math.cos(wang),hz=Math.sin(wang),a=Math.atan2(-(hx*fx+hz*fz),hx*rx+hz*rz);m.save();m.translate(70,70);m.rotate(a+Math.PI/2);m.fillStyle='#8affc8';m.beginPath();m.moveTo(0,-5);m.lineTo(4,4);m.lineTo(-4,4);m.closePath();m.fill();m.restore()}
   m.strokeStyle='rgba(138,255,200,.5)';m.lineWidth=1.5;m.beginPath();m.arc(70,70,68,0,TAU);m.stroke();
-  $('wdist').textContent='SCHIFF '+Math.round(Math.hypot(wx,wz)/18)+' m';
+  $('wdist').textContent='SCHIFF '+Math.round((wSO?wShipD():Math.hypot(wx,wz))/18)+' m';
   $('whp').style.width=Math.max(0,wHp)+'%';
   $('wammo').textContent=wgun?(wrl>0?'NACHLADEN …':WPN[wwp].n.slice(0,3)+' '+wmag+' / '+wres):'Keine Waffe (I)';
 }
@@ -2756,9 +2786,9 @@ function updWalk(dt){
   if(wgun)wang=nA(wang+nA(wyaw-wang)*Math.min(1,dt*14));else if(mag>.05)wang=nA(wang+nA(Math.atan2(dz,dx)-wang)*Math.min(1,dt*12));
   wsp=mag*sp;
   let nx=wx+dx*sp*dt,nz=wz+dz*sp*dt;
-  wTrav[0]+=nx-wx;wTrav[1]+=nz-wz;nx=wrp(nx);nz=wrp(nz);if(Math.abs(wTrav[0])>=WWD||Math.abs(wTrav[1])>=WWD){wTrav=[0,0];toast('Du hast den ganzen Planeten umrundet!','#ffd84a')}
+  wTrav[0]+=nx-wx;wTrav[1]+=nz-wz;nx=wrp(nx);nz=wrp(nz);if(wSO&&(Math.abs(nx)>WH||Math.abs(nz)>WH)){const r=wCross(nx,nz);nx=r[0];nz=r[1]}if(!wSO&&(Math.abs(wTrav[0])>=WWD||Math.abs(wTrav[1])>=WWD)){wTrav=[0,0];toast('Du hast den ganzen Planeten umrundet!','#ffd84a')}
   for(const c of WCOL){const ax=wrp(nx-c[0]),az=wrp(nz-c[1]),rr=c[2]+7;if(ax>rr||ax<-rr||az>rr||az<-rr)continue;const d=Math.hypot(ax,az);if(d<rr&&d>.001){nx=c[0]+ax/d*rr;nz=c[1]+az/d*rr}}
-  {const rr=wsr()*.9+7,d=Math.hypot(nx,nz);if(d<rr&&d>.001){nx*=rr/d;nz*=rr/d}}
+  if(!wSO||wf===wLF){const rr=wsr()*.9+7,d=Math.hypot(nx,nz);if(d<rr&&d>.001){nx*=rr/d;nz*=rr/d}}
   wx=wrp(nx);wz=wrp(nz);const gh=wgH(wx,wz);
   if((keys[' ']||wjump)&&wgr){wvy=270;wgr=false}wjump=false;
   if(wgr){wy=gh;wvy=0}else{wvy-=620*dt;wy+=wvy*dt;if(wy<=gh&&wvy<=0){wy=gh;wvy=0;wgr=true}}
@@ -2766,7 +2796,7 @@ function updWalk(dt){
   if(wrl>0){wrl-=dt;if(wrl<=0){snd('wRlE');const tk=Math.min(WPN[wwp].mag-wmag,wres);wmag+=tk;wres-=tk}}
   if(wgun&&$('winv').hidden&&(keys.f||wfire||wRay().tgt)&&wfc<=0&&wrl<=0){if(wmag>0){wmag--;wShoot()}else{wfc=.3;startReload()}}
   updEn(dt);
-  const near=Math.hypot(wx,wz)<wsr()*.9+95;if(near!==wnear){wnear=near;$('bboard').hidden=!near}
+  const near=Math.hypot(wx,wz)<wsr()*.9+95&&(!wSO||wf===wLF);if(near!==wnear){wnear=near;$('bboard').hidden=!near}
   {const sn2=!!WSAFE&&whd(wx,wz,WSAFE.x,WSAFE.z)<62,b=$('bsafe');if(b.hidden===sn2)b.hidden=!sn2;if(sn2){const t='Tresor → Schiff ('+vlt().length+')';if(b.textContent!==t)b.textContent=t}}
 }
 function drawAvatar(){
@@ -2821,6 +2851,56 @@ function renderWalk(){
   if(wfl>0&&wtr.length){const t=wtr[wtr.length-1];bill(CELL.glow,t.x0,t.y0,t.z0,16,[1,.85,.5],.9)}
   flushSpr(ATLAS);CURV=0;gl.depthMask(true);gl.disable(gl.BLEND);
   if(!LM)wDraw2D();else{cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,ov.width,ov.height)}
+}
+
+function renderWalkS(){
+  const DD=WCD,pc=Math.max(wpit,.05),cp=Math.cos(pc),so=wgun?30:0,tx=wx-Math.sin(wyaw)*so,ty=wy+WSZ*10,tz=wz+Math.cos(wyaw)*so;
+  const ex=tx-Math.cos(wyaw)*cp*DD,ez=tz-Math.sin(wyaw)*cp*DD;let ey=ty+Math.sin(pc)*DD;ey=Math.max(ey,wgH(ex,ez)+10);
+  const tt=[tx,ty+Math.max(0,.05-wpit)*620,tz],lk=m4.look([ex,ey,ez],tt);
+  EYE=[ex,ey,ez];CAMR=lk.r;CAMU=lk.u;CAMF=lk.f;
+  const E3=wmapP(wf,ex,ey,ez),T3=wmapP(wf,tt[0],tt[1],tt[2]),nz3=v=>{const l=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/l,v[1]/l,v[2]/l]},cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],dt3=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  const up=nz3(E3),F=nz3([T3[0]-E3[0],T3[1]-E3[1],T3[2]-E3[2]]),S=nz3(cr(F,up)),U=cr(S,F),o=new Float32Array(16);
+  o[0]=S[0];o[4]=S[1];o[8]=S[2];o[1]=U[0];o[5]=U[1];o[9]=U[2];o[2]=-F[0];o[6]=-F[1];o[10]=-F[2];o[12]=-dt3(S,E3);o[13]=-dt3(U,E3);o[14]=dt3(F,E3);o[15]=1;
+  VP=m4.mul(m4.persp(.9,cw/ch,10,400000),o);OFX=OFZ=YO=0;
+  const pr=LDX.pr,sy=SYS[0],LS=nz3([sy.x-pr.cx,60*sy.k,sy.y-pr.cz]);WL[0]=LS[0];WL[1]=LS[1];WL[2]=LS[2];WDAY=clamp(dt3(up,LS)*2.2+.35,0,1);
+  gl.viewport(0,0,cv.width,cv.height);gl.clearColor(.016,.024,.06,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  {const L=EYE;EYE=E3;drawSkyCube(false);EYE=L}
+  gl.disable(gl.CULL_FACE);gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
+  {const R=150000,seg=20,hz=[WHZ[0],WHZ[1],WHZ[2],.7*WDAY],zn=[WZN[0],WZN[1],WZN[2],.12*WDAY],p0=Math.abs(up[2])>.9?[1,0,0]:[0,0,1],P=nz3(cr(up,p0)),Q=cr(up,P);
+    const pt=(a,h)=>[E3[0]+(P[0]*Math.cos(a)+Q[0]*Math.sin(a))*R+up[0]*h,E3[1]+(P[1]*Math.cos(a)+Q[1]*Math.sin(a))*R+up[1]*h,E3[2]+(P[2]*Math.cos(a)+Q[2]*Math.sin(a))*R+up[2]*h];
+    for(let i=0;i<seg;i++){const a0=i/seg*TAU,a1=(i+1)/seg*TAU;
+      triS(pt(a0,-30000),hz,pt(a1,-30000),hz,pt(a1,0),hz);triS(pt(a0,-30000),hz,pt(a1,0),hz,pt(a0,0),hz);
+      triS(pt(a0,0),hz,pt(a1,0),hz,pt(a1,70000),zn);triS(pt(a0,0),hz,pt(a1,70000),zn,pt(a0,70000),zn)}
+    flushSpr(ATLAS)}
+  WMF=wf;for(const c of WK.cl){const wr=v=>((v+6000)%12000+12000)%12000-6000;gnd(CELL.glow,ex+wr(c.x+tmr*40-ex),c.y,ez+wr(c.z-ez),c.s,TH.cl,c.a*WDAY)}flushSpr(ATLAS);WMF=-1;
+  gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+  {const sx=E3[0]+LS[0]*120000,sy2=E3[1]+LS[1]*120000,sz=E3[2]+LS[2]*120000;bill(CELL.glow,sx,sy2,sz,24000,TH.sun,.35);bill(CELL.glow,sx,sy2,sz,8000,[1,.97,.85],1);flushSpr(ATLAS)}
+  gl.disable(gl.BLEND);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);
+  RE=E3;setLit();{const af=.32+.68*WDAY;gl.uniform3f(LP.u.uAmb,TH.amb[0]*af,TH.amb[1]*af,TH.amb[2]*af)}gl.uniform1f(LP.u.uFg,1/4300);gl.uniform3f(LP.u.uFgC,WHZ[0],WHZ[1],WHZ[2]);gl.uniform1f(LP.u.uCu,0);
+  const vis=[];for(let f=0;f<6;f++){let ok=f===wf;for(let i=-3;i<=3&&!ok;i++)for(let j=-3;j<=3;j++){const p=wmapP(f,i*WH/3,0,j*WH/3);if(Math.hypot(p[0]-E3[0],p[1]-E3[1],p[2]-E3[2])<6400){ok=true;break}}if(ok)vis.push(f)}
+  const sc=wsr();
+  for(const f of vis){WMM=wFM(f);wFU(f);
+    drawMesh(WK.m,ID4,PTINT,0,1,0,WL);
+    if(f===wLF)drawMesh(SHIPM.P[P.cls],model(0,wgH(0,0)+sc*.7,0,.6,0,0,sc,sc,sc),null,0,1,0,WL);
+    for(const e of WE){if(e.f!==f||e.dead>0)continue;const m=wmapP(f,e.x,0,e.z);if(Math.hypot(m[0]-E3[0],m[1]-E3[1],m[2]-E3[2])>5200)continue;const q=e.r?(e.g?2.5:2.2):(e.g?1.85:1.5),bob=Math.abs(Math.sin(e.ph))*2;drawMesh(e.r?WA.sh:WA.en,model(e.x,wgH(e.x,e.z)+(e.r?0:bob),e.z,-e.ang,0,0,q,q,q),null,e.hit>0?.6:0,1,0,WL)}
+    drawMesh(WA.ch,model(BX,wgH(BX,BZ)+4+(wChF[f]?0:Math.sin(tmr*2)*1.5),BZ,tmr*.5,0,0,2,2,2),wChF[f]?[.45,.4,.4]:null,0,1,0,WL);
+    for(const p of WP)if(p.f===f)drawMesh(p.item?WA.md:WA.pk,model(p.x,wgH(p.x,p.z)+(p.item?18:12)+Math.sin(tmr*3)*2,p.z,tmr*2,0,0,1.6,1.6,1.6),p.item?WTR[p.item.tier-1]:null,0,1,0,WL);
+    if(f===wf)drawAvatar();
+    drawMesh(WK.g,ID4,null,0,.27,0,WL)}
+  WMM=null;gl.uniform1f(LP.u.uCr,0);gl.uniform1f(LP.u.uFg,0);RE=null;
+  gl.depthMask(false);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  WMF=wf;gnd(CELL.glow,wx,wgH(wx,wz)+1.5,wz,24,[0,0,0],.5*clamp(1-(wy-wgH(wx,wz))/90,.1,1));
+  if(wf===wLF)gnd(CELL.glow,0,wgH(0,0)+1.5,0,sc*1.5,[0,0,0],.35);
+  flushSpr(ATLAS);gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+  for(const t of wtr){const a=clamp(t.t/.06,0,1);beam(t.x0,t.y0,t.z0,t.x1,t.y1,t.z1,6,[1,.7,.3],a*.35);beam(t.x0,t.y0,t.z0,t.x1,t.y1,t.z1,1.6,[1,.95,.7],a);if(t.hit)bill(CELL.glow,t.x1,t.y1+4,t.z1,18*a+4,[1,.8,.4],a)}
+  for(const t of WT){const a=clamp(t.t/.12,0,1);beam(t.x0,t.y0,t.z0,t.x1,t.y1,t.z1,5,[1,.25,.2],a*.4);beam(t.x0,t.y0,t.z0,t.x1,t.y1,t.z1,1.5,[1,.7,.6],a)}
+  for(const f of vis){WMF=f;
+    for(const p of WP){if(p.f!==f)continue;if(p.item){const c=WTR[p.item.tier-1],gy=wgH(p.x,p.z);bill(CELL.glow,p.x,gy+18,p.z,48,c,.7);beam(p.x,gy,p.z,p.x,gy+140,p.z,5,c,.35)}else bill(CELL.glow,p.x,wgH(p.x,p.z)+14,p.z,26,[1,.85,.3],.6)}
+    beam(BX,0,BZ,BX,900,BZ,16,TH.bm,.3);bill(CELL.glow,BX,900,BZ,160,TH.bm,.5);if(!wChF[f])bill(CELL.glow,BX,40,BZ,60,[1,.85,.3],.6+.2*Math.sin(tmr*4));
+    for(const q of WFX)bill(CELL.glow,q[0],q[1],q[2],q[3],q[4],q[5])}
+  if(wfl>0&&wtr.length){WMF=wf;const t=wtr[wtr.length-1];bill(CELL.glow,t.x0,t.y0,t.z0,16,[1,.85,.5],.9)}
+  flushSpr(ATLAS);WMF=-1;gl.depthMask(true);gl.disable(gl.BLEND);
+  wDraw2D();
 }
 function renderSkills(){
   const rg=l=>'+'+(MT.regen.val*TS[l-1]*SK_RG).toFixed(1).replace('.',',')+' Schild pro Sekunde, im Kampf die Hälfte';
@@ -3074,7 +3154,7 @@ function frame(t){
   const f=Math.min(1,dt*7);{const fw=P&&P.warp?1:f;cam.x+=(P.x-cam.x)*fw;cam.y+=(P.y-cam.y)*fw}{const zi=(zIn||keys['+']||keys['=']?1:0)-(zOut||keys['-']||keys['_']?1:0);if(zi)zoomTo(ZUt*Math.exp(zi*dt*1.1));if(Math.abs(ZUt-ZU)>.0004){ZU+=(ZUt-ZU)*Math.min(1,dt*10);Z=Zb*ZU}}
   cam.z+=((P.z||0)-cam.z)*f;if(ctrl==='free'||ctrl==='dual'){if(mode==='play'){const rk=(keys.arrowright?1:0)-(keys.arrowleft?1:0);if(rk)camYaw=nA(camYaw+rk*1.8*dt);const pk=(keys.q?1:0)-(keys.v?1:0);if(pk)camPitch=clamp(camPitch+pk*1.2*dt,PMIN,PMAX)}cam.a=camYaw}
   else{let da=P.ang-cam.a;while(da>Math.PI)da-=TAU;while(da<-Math.PI)da+=TAU;cam.a+=da*Math.min(1,dt*5);if(cam.a>Math.PI)cam.a-=TAU;else if(cam.a<-Math.PI)cam.a+=TAU}
-  fdt=dt;if(mode==='walk'||(mode==='land'&&WK&&LDX&&!LDX.pr))renderWalk();else if(mode!=='dock'){render3D();drawOverlay();if(mode==='play'||mode==='dead'||mode==='pause')drawFX()}
+  fdt=dt;if(mode==='walk'&&wSO&&LDX&&LDX.pr)renderWalkS();else if(mode==='walk'||(mode==='land'&&WK&&LDX&&!LDX.pr))renderWalk();else if(mode!=='dock'){render3D();drawOverlay();if(mode==='play'||mode==='dead'||mode==='pause')drawFX()}
   if(mode!=='dock'&&mode!=='walk'){drawRadar();if(mode==='map')drawMap()}
   hacc+=dt;if(hacc>.08){hacc=0;if(mode!=='title'){updHUD();updSkBtn()}}
   requestAnimationFrame(frame);
